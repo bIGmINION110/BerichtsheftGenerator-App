@@ -74,17 +74,10 @@ class TemplateView(ctk.CTkFrame):
             return
             
         for template_text in self.templates:
-            frame = ctk.CTkFrame(self.scroll_frame, border_width=2, border_color="transparent")
+            # Der Frame ist nur noch ein Container und nicht mehr selbst fokussierbar.
+            frame = ctk.CTkFrame(self.scroll_frame)
             frame.pack(fill="x", padx=5, pady=5)
             frame.grid_columnconfigure(0, weight=1)
-            
-            # Tastaturnavigation für den Frame
-            frame.configure(takefocus=True)
-            frame.bind("<FocusIn>", lambda e, f=frame: f.configure(border_color=config.FOCUS_COLOR))
-            frame.bind("<FocusOut>", lambda e, f=frame: f.configure(border_color="transparent"))
-            frame.bind("<Return>", lambda e, t=template_text: self._insert_template(t))
-            frame.bind("<space>", lambda e, t=template_text: self._insert_template(t))
-            frame.bind("<Delete>", lambda e, t=template_text: self._delete_template(t))
             
             ctk.CTkLabel(frame, text=template_text, wraplength=350, justify="left").grid(row=0, column=0, padx=10, pady=5, sticky="w")
             
@@ -98,7 +91,8 @@ class TemplateView(ctk.CTkFrame):
                 status_callback=self.app.update_status,
                 speak_callback=self.app.speak
             ).grid(row=0, column=1, padx=5, pady=5)
-            AccessibleCTkButton(
+            
+            delete_button = AccessibleCTkButton(
                 frame, 
                 text="Löschen", 
                 width=80, 
@@ -109,7 +103,12 @@ class TemplateView(ctk.CTkFrame):
                 accessible_text=f"Löscht die Vorlage '{template_text[:30]}...'.",
                 status_callback=self.app.update_status,
                 speak_callback=self.app.speak
-            ).grid(row=0, column=2, padx=5, pady=5)
+            )
+            delete_button.grid(row=0, column=2, padx=5, pady=5)
+            
+            # KORREKTUR: Die <Delete>-Tastenfunktionalität wird an den "Löschen"-Button gebunden,
+            # da der Frame selbst nicht mehr fokussiert werden kann.
+            delete_button.bind("<Delete>", lambda e, t=template_text: self._delete_template(t))
 
     def _add_template(self):
         """Fügt eine neue Vorlage hinzu."""

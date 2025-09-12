@@ -30,23 +30,24 @@ class BerichtsheftView(ctk.CTkFrame):
         self.main_font = ctk.CTkFont(family="Segoe UI", size=13)
         self.bold_font = ctk.CTkFont(family="Segoe UI", size=14, weight="bold")
         
+        # UI Widgets
         self.tages_widgets: List[Dict[str, Any]] = []
         self.kalender: Optional[DateEntry] = None
+        self.kopf_frame: Optional[ctk.CTkFrame] = None
+        self.start_entry: Optional[AccessibleCTkEntry] = None
+        
+        # Variablen für Widgets
         self.name_var = tk.StringVar()
         self.startdatum_var = tk.StringVar()
         self.nummer_var = tk.StringVar()
         self.jahr_var = tk.StringVar()
         self.kw_var = tk.StringVar()
-        self.format_var = tk.StringVar(value="docx") # Standard wird jetzt in load_initial_data gesetzt
-        self.start_entry: Optional[AccessibleCTkEntry] = None
+        self.format_var = tk.StringVar()
+        
         self.default_border_color: Optional[str] = None
         
         self._create_widgets()
-        self.load_initial_data()
-        
-        self.name_var.trace_add("write", self.app.schedule_autosave)
-        self.startdatum_var.trace_add("write", self.app.schedule_autosave)
-        self.startdatum_var.trace_add("write", self._validate_start_date)
+        self.on_show() # Initiales Laden und Anzeigen der Daten
         
     def _create_widgets(self):
         """Erstellt alle Widgets in dieser Ansicht."""
@@ -55,7 +56,9 @@ class BerichtsheftView(ctk.CTkFrame):
         
         header_data_frame = ctk.CTkFrame(self, fg_color="transparent")
         header_data_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
-        header_data_frame.grid_columnconfigure((0, 1), weight=1)
+        header_data_frame.grid_columnconfigure(1, weight=1)
+        
+        # Erstellt den Frame für persönliche Daten, der später ein-/ausgeblendet wird
         self._create_kopfdaten_widgets(header_data_frame)
         self._create_wochendaten_widgets(header_data_frame)
         
@@ -63,34 +66,35 @@ class BerichtsheftView(ctk.CTkFrame):
         self._create_action_buttons()
 
     def _create_kopfdaten_widgets(self, parent):
-        kopf_frame = ctk.CTkFrame(parent)
-        kopf_frame.grid(row=0, column=0, padx=(0, 10), pady=10, sticky="nsew")
-        kopf_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(kopf_frame, text="Persönliche Daten", font=self.bold_font).grid(row=0, column=0, columnspan=3, pady=15, padx=15, sticky="w")
-        ctk.CTkLabel(kopf_frame, text="Name des Azubis:", font=self.main_font).grid(row=1, column=0, sticky="w", padx=15, pady=8)
-        name_entry = AccessibleCTkEntry(kopf_frame, textvariable=self.name_var, font=self.main_font, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für den Namen des Auszubildenden.", status_callback=self.app.update_status, speak_callback=self.app.speak)
-        name_entry.grid(row=1, column=1, columnspan=2, sticky="ew", padx=15, pady=8)
-        ctk.CTkLabel(kopf_frame, text="Start Ausbildung:", font=self.main_font).grid(row=2, column=0, sticky="w", padx=15, pady=8)
+        """Erstellt den Frame, der nur angezeigt wird, wenn keine Daten in den Einstellungen sind."""
+        self.kopf_frame = ctk.CTkFrame(parent)
+        # grid() wird in on_show() aufgerufen
         
+        self.kopf_frame.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(self.kopf_frame, text="Persönliche Daten (Bitte in Einstellungen festlegen)", font=self.bold_font).grid(row=0, column=0, columnspan=2, pady=15, padx=15, sticky="w")
+        
+        ctk.CTkLabel(self.kopf_frame, text="Name des Azubis:", font=self.main_font).grid(row=1, column=0, sticky="w", padx=15, pady=8)
+        name_entry = AccessibleCTkEntry(self.kopf_frame, textvariable=self.name_var, font=self.main_font, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für den Namen des Auszubildenden.", status_callback=self.app.update_status, speak_callback=self.app.speak)
+        name_entry.grid(row=1, column=1, sticky="ew", padx=15, pady=8)
+        
+        ctk.CTkLabel(self.kopf_frame, text="Start Ausbildung:", font=self.main_font).grid(row=2, column=0, sticky="w", padx=15, pady=8)
         self.start_entry = AccessibleCTkEntry(
-            kopf_frame, 
-            textvariable=self.startdatum_var, 
-            placeholder_text="TT.MM.JJJJ", 
-            font=self.main_font,
-            focus_color=config.FOCUS_COLOR,
-            accessible_text="Startdatum der Ausbildung im Format Tag.Monat.Jahr. Anhand dessen wird das Ausbildungsjahr berechnet.", 
-            status_callback=self.app.update_status,
-            speak_callback=self.app.speak
-        )
+            self.kopf_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=self.main_font,
+            focus_color=config.FOCUS_COLOR, accessible_text="Startdatum der Ausbildung im Format Tag.Monat.Jahr.", 
+            status_callback=self.app.update_status, speak_callback=self.app.speak)
         self.start_entry.grid(row=2, column=1, sticky="ew", padx=15, pady=8)
         self.default_border_color = self.start_entry.cget("border_color")
         
-        save_button = AccessibleCTkButton(kopf_frame, text="Speichern (Strg+S)", command=self.app.speichere_konfiguration, font=self.main_font,
-                                          focus_color=config.FOCUS_COLOR,
-                                          accessible_text="Speichert den Namen und das Startdatum der Ausbildung.",
-                                          status_callback=self.app.update_status,
-                                          speak_callback=self.app.speak)
-        save_button.grid(row=2, column=2, padx=(8, 15), pady=8, sticky="e")
+        # Trace zur Validierung des Datumsformats hinzufügen
+        self.startdatum_var.trace_add("write", self._validate_start_date)
+
+        # Button, um direkt zu den Einstellungen zu springen
+        settings_button = AccessibleCTkButton(self.kopf_frame, text="Zu den Einstellungen", command=lambda: self.app.show_view("settings"), 
+                                              font=self.main_font, focus_color=config.FOCUS_COLOR,
+                                              accessible_text="Öffnet die Einstellungen, um Name und Startdatum festzulegen.",
+                                              status_callback=self.app.update_status, speak_callback=self.app.speak)
+        settings_button.grid(row=3, column=1, padx=15, pady=10, sticky="e")
+
 
     def _create_wochendaten_widgets(self, parent):
         woche_frame = ctk.CTkFrame(parent)
@@ -150,7 +154,7 @@ class BerichtsheftView(ctk.CTkFrame):
                                               speak_callback=self.app.speak)
             typ_combo.pack(side="left", padx=(0, 20))
             ctk.CTkLabel(header_frame, text="Stunden:", font=self.main_font).pack(side="left", padx=(5, 5))
-            stunden_var = tk.StringVar() # Standard wird jetzt in load_initial_data gesetzt
+            stunden_var = tk.StringVar()
             stunden_entry = AccessibleCTkEntry(master=header_frame, textvariable=stunden_var, width=70, font=self.main_font, 
                                                focus_color=config.FOCUS_COLOR,
                                                accessible_text=f"Eingabefeld für die Stundenanzahl am {tag_name}.", 
@@ -209,25 +213,39 @@ class BerichtsheftView(ctk.CTkFrame):
                                                         speak_callback=self.app.speak)
         self.create_report_button.pack(side="right", padx=10, pady=5)
 
-    def load_initial_data(self):
-        """Lädt die initialen Konfigurations- und Berichtsdaten in die GUI."""
+    def on_show(self):
+        """Lädt die Konfiguration und passt die Sichtbarkeit der Widgets an."""
         konfig = self.app.data_manager.lade_konfiguration()
-        self.name_var.set(konfig.get("name_azubi", ""))
-        self.startdatum_var.set(konfig.get("startdatum_ausbildung", ""))
+        name_azubi = konfig.get("name_azubi", "")
+        startdatum_ausbildung = konfig.get("startdatum_ausbildung", "")
 
-        # NEU: Lade Einstellungen für Standardwerte
+        # Blendet den Frame für persönliche Daten aus, wenn diese in den Einstellungen gesetzt sind
+        if name_azubi and self.app.logic.valide_datumsformat(startdatum_ausbildung):
+            self.kopf_frame.grid_forget()
+        else:
+            self.kopf_frame.grid(row=0, column=0, padx=(0, 10), pady=10, sticky="nsew")
+
+        # Setzt die internen Variablen, damit sie für die Berichtserstellung verfügbar sind
+        self.name_var.set(name_azubi)
+        self.startdatum_var.set(startdatum_ausbildung)
+        
         einstellungen = konfig.get("einstellungen", {})
-        default_format = einstellungen.get("default_format", "docx")
-        self.format_var.set(default_format)
+        self.format_var.set(einstellungen.get("default_format", "docx"))
+        
         default_stunden = einstellungen.get("default_stunden", {})
+        default_typen = einstellungen.get("default_typen", {})
 
-        # Setze die Standardstunden für jeden Tag
         for i, tag_name in enumerate(config.WOCHENTAGE):
             if i < len(self.tages_widgets):
-                # Fallback, falls keine Einstellungen vorhanden sind
-                fallback_zeit = "08:15" if i < 4 else "06:00"
-                default_zeit = default_stunden.get(tag_name, fallback_zeit)
-                self.tages_widgets[i]["stunden"].set(default_zeit)
+                widgets = self.tages_widgets[i]
+                default_typ = default_typen.get(tag_name, "Betrieb")
+                widgets["typ"].set(default_typ)
+                
+                if default_typ in ["Urlaub", "Krank", "Feiertag"]:
+                    widgets["stunden"].set("0:00")
+                else:
+                    default_zeit = default_stunden.get(tag_name, "08:00")
+                    widgets["stunden"].set(default_zeit)
 
         letztes_jahr = konfig.get("letzte_bericht_jahr")
         letzte_kw = konfig.get("letzte_bericht_kw")
@@ -243,6 +261,7 @@ class BerichtsheftView(ctk.CTkFrame):
         
         self._update_kw_from_kalender()
         self.nummer_var.set(str(letzte_nr + 1))
+
 
     def load_report_data_into_ui(self, report_data: Dict[str, Any]):
         """Lädt die Daten eines spezifischen Berichts in die GUI-Felder."""
@@ -268,18 +287,12 @@ class BerichtsheftView(ctk.CTkFrame):
         selected_date = self.kalender.get_date()
         iso_year, iso_week, _ = selected_date.isocalendar()
         
-        self.kw_var.trace_remove("write", self.kw_var.trace_info()[0][1])
-        self.jahr_var.trace_remove("write", self.jahr_var.trace_info()[0][1])
-
-        self.jahr_var.set(str(iso_year))
-        self.kw_var.set(str(iso_week))
-        
-        self.kw_var.trace_add("write", self._update_kalender_from_kw)
-        self.jahr_var.trace_add("write", self._update_kalender_from_kw)
-
-        status_message = f"Kalenderwoche {iso_week}, Jahr {iso_year} ausgewählt."
-        self.app.update_status(status_message)
-        self.app.speak(status_message, interrupt=False)
+        if not (self.kw_var.get() == str(iso_week) and self.jahr_var.get() == str(iso_year)):
+            self.kw_var.set(str(iso_week))
+            self.jahr_var.set(str(iso_year))
+            status_message = f"Kalenderwoche {iso_week}, Jahr {iso_year} ausgewählt."
+            self.app.update_status(status_message)
+            self.app.speak(status_message, interrupt=False)
 
     def _update_kalender_from_kw(self, *args: Any):
         """Aktualisiert das Kalenderdatum, wenn KW oder Jahr manuell geändert werden."""
@@ -295,12 +308,8 @@ class BerichtsheftView(ctk.CTkFrame):
             new_date = date.fromisocalendar(jahr, kw, 1)
             
             if self.kalender.get_date() != new_date:
-                self.kalender.unbind("<<DateEntrySelected>>")
                 self.kalender.set_date(new_date)
-                self.kalender.bind("<<DateEntrySelected>>", self._update_kw_from_kalender)
 
-                status_message = f"Kalenderwoche {kw}, Jahr {jahr} ausgewählt."
-                self.app.update_status(status_message)
         except (ValueError, TypeError):
             pass
 
@@ -310,6 +319,8 @@ class BerichtsheftView(ctk.CTkFrame):
         if self.start_entry and self.default_border_color:
             if is_valid:
                 self.start_entry.configure(border_color=self.default_border_color)
+                # Nur speichern, wenn das Format gültig ist
+                self.app.speichere_persoenliche_daten(self.name_var.get(), datum_str)
             else:
                 self.start_entry.configure(border_color=config.ERROR_COLOR)
                 self.app.update_status("Fehler: Ungültiges Datumsformat. Bitte TT.MM.JJJJ verwenden.")

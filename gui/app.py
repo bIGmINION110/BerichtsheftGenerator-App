@@ -20,7 +20,6 @@ try:
 except ImportError:
     Image = None
 
-# NEUE IMPORTE für Barrierefreiheit
 try:
     from accessible_output2 import outputs
     ACCESSIBLE_OUTPUT_AVAILABLE = True
@@ -57,30 +56,24 @@ class BerichtsheftApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
         
-        # --- Initialisierung der Kernkomponenten ---
         self.data_manager = DataManager()
         self.controller = AppController(self.data_manager)
         self.logic = BerichtsheftLogik()
         
-        # --- NEU: Screenreader-Erkennung ---
         self.speaker = self._initialize_speaker()
         self.screen_reader_active = self.speaker is not None
         
-        # --- UI-Variablen ---
         self.logo_image: Optional[ctk.CTkImage] = None
-        self.autosave_timer: Optional[str] = None
         self.views: Dict[str, ctk.CTkFrame] = {}
         self.sidebar_buttons: Dict[str, ctk.CTkButton] = {}
 
-        # --- Setup ---
         self._setup_window()
         self._create_main_layout()
         self._create_and_register_views()
         self._setup_shortcuts()
         
-        self.show_view("berichtsheft") # Standardansicht beim Start
+        self.show_view("berichtsheft")
         
-        # Spricht eine Willkommensnachricht und prüft auf Updates
         self.after(500, self._welcome_message)
         self.after(1500, self._start_update_check)
         
@@ -89,30 +82,21 @@ class BerichtsheftApp(ctk.CTk):
     def _initialize_speaker(self) -> Optional[Any]:
         """
         Versucht, einen aktiven Screenreader zu initialisieren.
-        Priorisiert explizite Reader und vermeidet generische TTS-Engines.
         """
         if not ACCESSIBLE_OUTPUT_AVAILABLE:
             logging.info("Bibliothek 'accessible_output2' nicht verfügbar. Sprachausgabe deaktiviert.")
             return None
+        
+        try:
+            # Versucht, irgendeinen verfügbaren, aktiven Reader zu finden
+            speaker = outputs.auto.Auto()
+            if speaker.is_active():
+                logging.info(f"Screenreader '{speaker.name}' erkannt und wird verwendet.")
+                return speaker
+        except Exception:
+            pass # Ignoriert Fehler, falls kein Reader gefunden wird
 
-        # Priorisierte Liste der zu prüfenden Screenreader-Klassen
-        reader_classes = [
-            outputs.nvda.NVDA,
-            outputs.jaws.Jaws
-        ]
-
-        # Versuche, jeden spezifischen Reader zu initialisieren
-        for reader_class in reader_classes:
-            try:
-                reader = reader_class()
-                if reader.is_active():
-                    logging.info(f"Screenreader '{reader.name}' erkannt und wird verwendet.")
-                    return reader
-            except Exception:
-                # Einfach weitermachen, wenn der Reader nicht gefunden wird oder ein Fehler auftritt
-                continue
-
-        logging.info("Kein spezifischer Screenreader (NVDA, JAWS, Narrator) aktiv oder gefunden.")
+        logging.info("Kein aktiver Screenreader gefunden.")
         return None
 
     def _welcome_message(self):
@@ -136,20 +120,17 @@ class BerichtsheftApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # Statusleiste am unteren Rand
         self.status_bar_frame = ctk.CTkFrame(self, height=25, corner_radius=0)
         self.status_bar_frame.grid(row=1, column=0, columnspan=2, sticky="sew")
         self.status_bar = ctk.CTkLabel(self.status_bar_frame, text="", anchor="w")
         self.status_bar.pack(side="left", padx=10, pady=2)
         self.progress_bar = ctk.CTkProgressBar(self.status_bar_frame, indeterminate_speed=1.2)
         
-        # Seitenleiste für die Navigation
         self.sidebar_frame = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color=config.SIDEBAR_BG_COLOR)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsw")
         self.sidebar_frame.grid_rowconfigure(8, weight=1)
         self._create_sidebar_widgets()
 
-        # Container für die dynamischen Ansichten
         self.view_container = ctk.CTkFrame(self, fg_color=config.FRAME_BG_COLOR)
         self.view_container.grid(row=0, column=1, sticky="nsew", padx=15, pady=15)
         self.view_container.grid_columnconfigure(0, weight=1)
@@ -222,7 +203,6 @@ class BerichtsheftApp(ctk.CTk):
                 view_to_show.on_show()
             
             view_to_show.grid(row=0, column=0, sticky="nsew")
-            # Ansagen-Text verbessert
             readable_name = view_name.replace('_', ' ').title()
             self.update_status(f"Ansicht '{readable_name}' geladen.")
             self.speak(f"Ansicht {readable_name}")
@@ -267,17 +247,15 @@ class BerichtsheftApp(ctk.CTk):
             messagebox.showerror("Fehler", f"Der Ordner '{folder_path}' konnte nicht geöffnet werden: {e}")
             logger.error(f"Fehler beim Öffnen des Ausgabeordners: {e}", exc_info=True)
 
-    def speichere_konfiguration(self, event: Any = None) -> str:
-        """Speichert die Konfiguration aus der Berichtsheft-Ansicht."""
-        berichtsheft_view = self.views["berichtsheft"]
+    def speichere_persoenliche_daten(self, name: str, startdatum: str):
+        """Speichert Name und Startdatum aus der Einstellungs- oder Berichtsheftansicht."""
         konfig = self.data_manager.lade_konfiguration()
-        konfig["name_azubi"] = berichtsheft_view.name_var.get()
-        konfig["startdatum_ausbildung"] = berichtsheft_view.startdatum_var.get()
+        konfig["name_azubi"] = name
+        konfig["startdatum_ausbildung"] = startdatum
         if self.data_manager.speichere_konfiguration(konfig):
-            self.update_status("Konfiguration erfolgreich gespeichert.")
+            self.update_status("Persönliche Daten gespeichert.")
         else:
-            self.update_status("Fehler beim Speichern der Konfiguration.")
-        return "break"
+            self.update_status("Fehler beim Speichern der persönlichen Daten.")
 
     def speichere_einstellungen(self, neue_einstellungen: Dict[str, Any]):
         """Speichert die allgemeinen Einstellungen aus der SettingsView."""
@@ -286,43 +264,33 @@ class BerichtsheftApp(ctk.CTk):
         if self.data_manager.speichere_konfiguration(konfig):
             self.update_status("Einstellungen erfolgreich gespeichert.")
             messagebox.showinfo("Gespeichert", "Die Einstellungen wurden erfolgreich gespeichert.")
-            # Lade die neuen Standardwerte in die Berichtsheft-Ansicht, falls sie existiert
             if "berichtsheft" in self.views:
-                 self.views["berichtsheft"].load_initial_data()
+                 self.views["berichtsheft"].on_show()
         else:
             self.update_status("Fehler beim Speichern der Einstellungen.")
             messagebox.showerror("Fehler", "Die Einstellungen konnten nicht gespeichert werden.")
 
-    def schedule_autosave(self, *args: Any) -> None:
-        """Plant das automatische Speichern nach einer kurzen Verzögerung."""
-        if self.autosave_timer:
-            self.after_cancel(self.autosave_timer)
-        self.autosave_timer = self.after(2000, self._perform_autosave)
-
-    def _perform_autosave(self) -> None:
-        """Führt das automatische Speichern durch."""
-        self.autosave_timer = None
-        self.update_status("Automatisch gespeichert...")
-        self.speichere_konfiguration()
-
     def sammle_daten_fuer_bericht(self) -> Optional[Dict[str, Any]]:
-        """Sammelt und validiert alle Daten aus der Berichtsheft-Ansicht."""
+        """Sammelt und validiert alle Daten für die Berichtserstellung."""
         berichtsheft_view = self.views["berichtsheft"]
         context = {}
         try:
-            context["name_azubi"] = berichtsheft_view.name_var.get()
-            startdatum_str = berichtsheft_view.startdatum_var.get()
-            if not context["name_azubi"] or not startdatum_str:
-                raise ValueError("Name und Startdatum dürfen nicht leer sein.")
-            if not self.logic.valide_datumsformat(startdatum_str):
-                raise ValueError("Ungültiges Format für Startdatum. Bitte TT.MM.JJJJ verwenden.")
+            # Daten direkt aus der Konfigurationsdatei laden
+            konfig = self.data_manager.lade_konfiguration()
+            context["name_azubi"] = konfig.get("name_azubi", "")
+            startdatum_str = konfig.get("startdatum_ausbildung", "")
+            
+            if not context["name_azubi"] or not self.logic.valide_datumsformat(startdatum_str):
+                messagebox.showerror("Fehlende Daten", "Bitte zuerst Name und Startdatum in den Einstellungen festlegen.")
+                self.show_view("settings")
+                return None
             
             try:
                 context["fortlaufende_nr"] = int(berichtsheft_view.nummer_var.get())
                 context["jahr"] = int(berichtsheft_view.jahr_var.get())
                 context["kalenderwoche"] = int(berichtsheft_view.kw_var.get())
             except ValueError:
-                messagebox.showerror("Eingabefehler", "Bitte geben Sie eine gültige Zahl für 'Bericht Nr.', 'Jahr' und 'KW' ein.")
+                messagebox.showerror("Eingabefehler", "Bitte eine gültige Zahl für 'Bericht Nr.', 'Jahr' und 'KW' eingeben.")
                 return None
             
             context["startdatum_ausbildung_dt"] = datetime.strptime(startdatum_str, "%d.%m.%Y").date()
@@ -370,7 +338,7 @@ class BerichtsheftApp(ctk.CTk):
         erfolg, nachricht = self.controller.erstelle_bericht(context, gewaehltes_format)
         if erfolg:
             self.update_status(nachricht)
-            self.views["berichtsheft"].load_initial_data()
+            self.views["berichtsheft"].on_show()
         else:
             messagebox.showerror("Fehler", nachricht)
         self._generation_complete()
@@ -387,7 +355,6 @@ class BerichtsheftApp(ctk.CTk):
     def _setup_shortcuts(self) -> None:
         """Definiert globale Tastenkürzel."""
         self.bind("<Control-g>", self.erstelle_bericht)
-        self.bind("<Control-s>", self.speichere_konfiguration)
         
         view_keys = ["1", "2", "3", "4", "5", "6", "7", "8"]
         view_names = list(self.sidebar_buttons.keys())
@@ -414,9 +381,8 @@ class BerichtsheftApp(ctk.CTk):
             self.speak(f"Tab {view.tabview.get()} ausgewählt")
         return "break"
 
-    # --- NEUE METHODEN FÜR UPDATE-PRÜFUNG ---
     def _start_update_check(self) -> None:
-        """Startet die Update-Prüfung in einem separaten Thread, um die GUI nicht zu blockieren."""
+        """Startet die Update-Prüfung in einem separaten Thread."""
         update_thread = threading.Thread(target=self._run_update_check, daemon=True)
         update_thread.start()
 
@@ -425,7 +391,6 @@ class BerichtsheftApp(ctk.CTk):
         update_service = UpdateService()
         update_info = update_service.check_for_updates()
         if update_info:
-            # Planen der Benachrichtigung im Haupt-Thread
             self.after(0, self._show_update_notification, update_info)
 
     def _show_update_notification(self, update_info: Dict[str, str]) -> None:
@@ -449,12 +414,9 @@ class BerichtsheftApp(ctk.CTk):
         return self.views["berichtsheft"]
 
     def reload_all_data(self) -> None:
-        """
-        Lädt alle Daten neu und aktualisiert die Ansichten.
-        Wird nach einem Datenimport aufgerufen.
-        """
+        """Lädt alle Daten neu und aktualisiert die Ansichten."""
         self.update_status("Lade neue Daten...")
-        self.get_berichtsheft_view_reference().load_initial_data()
+        self.get_berichtsheft_view_reference().on_show()
         
         for view_name, view in self.views.items():
             if view.winfo_viewable() and hasattr(view, 'on_show') and view_name != "import":
@@ -462,4 +424,3 @@ class BerichtsheftApp(ctk.CTk):
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
-
