@@ -10,7 +10,7 @@ from typing import List, Tuple
 
 # --- Anwendungsinformationen ---
 APP_NAME: str = "Berichtsheft-Generator"
-VERSION: str = "17.0-Stable"
+VERSION: str = "17.2 - Datenbankenintegration"
 GITHUB_REPO_URL: str = "https://api.github.com/repos/bigminion110/berichtsheftgenerator-app/releases/latest"
 
 # --- Verzeichnisse und Dateipfade ---
