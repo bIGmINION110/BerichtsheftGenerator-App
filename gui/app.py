@@ -81,23 +81,34 @@ class BerichtsheftApp(ctk.CTk):
 
     def _initialize_speaker(self) -> Optional[Any]:
         """
-        Versucht, einen aktiven Screenreader zu initialisieren.
+        Prüft gezielt, ob ein unterstützter Screenreader AKTIV ist.
         """
         if not ACCESSIBLE_OUTPUT_AVAILABLE:
             logging.info("Bibliothek 'accessible_output2' nicht verfügbar. Sprachausgabe deaktiviert.")
             return None
-        
-        try:
-            # Versucht, irgendeinen verfügbaren, aktiven Reader zu finden
-            speaker = outputs.auto.Auto()
-            if speaker.is_active():
-                logging.info(f"Screenreader '{speaker.name}' erkannt und wird verwendet.")
-                return speaker
-        except Exception:
-            pass # Ignoriert Fehler, falls kein Reader gefunden wird
 
-        logging.info("Kein aktiver Screenreader gefunden.")
-        return None
+        # Wir prüfen bekannte Screenreader in einer festen Reihenfolge.
+        # WICHTIG: Die .is_active() Methode wird hier auf die spezifische Instanz angewendet.
+        try:
+            # 1. Prüfe auf NVDA
+            nvda = outputs.nvda.NVDA()
+            if nvda.is_active():
+                logging.info("Aktiver Screenreader 'NVDA' erkannt. Sprachausgabe wird aktiviert.")
+                return nvda
+
+            # 2. Prüfe auf JAWS
+            jaws = outputs.jaws.JAWS()
+            if jaws.is_active():
+                logging.info("Aktiver Screenreader 'JAWS' erkannt. Sprachausgabe wird aktiviert.")
+                return jaws
+            
+            # Wenn kein unterstützter Screenreader aktiv ist:
+            logging.info("Kein dedizierter Screenreader (NVDA/JAWS) aktiv. Sprachausgabe bleibt deaktiviert.")
+            return None
+
+        except Exception as e:
+            logging.warning(f"Fehler bei der Initialisierung des Screenreaders: {e}")
+            return None
 
     def _welcome_message(self):
         """Gibt eine Willkommensnachricht aus, falls ein Screenreader aktiv ist."""
@@ -361,6 +372,8 @@ class BerichtsheftApp(ctk.CTk):
         for i, key in enumerate(view_keys):
             if i < len(view_names):
                 self.bind(f"<Control-KeyPress-{key}>", lambda event, v=view_names[i]: self.show_view(v))
+        
+        self.bind("<Control-o>", lambda event: self._open_output_folder())
 
         self.bind("<Control-Tab>", self.select_next_tab)
         self.bind("<Control-Shift-Tab>", self.select_previous_tab)
@@ -424,3 +437,4 @@ class BerichtsheftApp(ctk.CTk):
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
+        

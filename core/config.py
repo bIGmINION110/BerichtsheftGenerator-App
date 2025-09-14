@@ -25,9 +25,15 @@ ASSETS_ORDNER: str = os.path.join(BASE_DIR, "assets")
 LOG_ORDNER: str = os.path.join(BASE_DIR, "logs")
 FONTS_ORDNER: str = os.path.join(ASSETS_ORDNER, "fonts")
 
-KONFIG_DATEI: str = os.path.join(DATA_ORDNER, "berichtsheft_konfig.json")
-BERICHTS_DATEI: str = os.path.join(DATA_ORDNER, "berichts_daten.json")
-VORLAGEN_DATEI: str = os.path.join(DATA_ORDNER, "templates.json")
+# --- Datenbank ---
+DATENBANK_DATEI: str = os.path.join(DATA_ORDNER, "berichtsheft.db")
+
+# Veraltete JSON-Pfade für die Migration
+KONFIG_DATEI_OLD: str = os.path.join(DATA_ORDNER, "berichtsheft_konfig.json")
+BERICHTS_DATEI_OLD: str = os.path.join(DATA_ORDNER, "berichts_daten.json")
+VORLAGEN_DATEI_OLD: str = os.path.join(DATA_ORDNER, "templates.json")
+
+
 LOGO_DATEI: str = os.path.join(ASSETS_ORDNER, "image.png")
 ICON_DATEI: str = os.path.join(ASSETS_ORDNER, "icon.ico")
 
@@ -52,4 +58,3 @@ DOCX_FONT_HEADLINE: str = 'Verdana'
 DOCX_FONT_BODY: str = 'Verdana'
 PDF_FONT_HEADLINE: Tuple[str, str] = ('Verdana', 'B')
 PDF_FONT_BODY: Tuple[str, str] = ('Verdana', '')
-

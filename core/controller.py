@@ -30,7 +30,7 @@ class AppController:
             data_manager: Eine Instanz des DataManagers für den Datenzugriff.
         """
         self.data_manager = data_manager
-        self.backup_service = BackupService()
+        self.backup_service = BackupService(self.data_manager) # DataManager übergeben
         self.importer_service = ImporterService() # NEUER SERVICE
         logger.info("AppController wurde initialisiert.")
 
@@ -150,4 +150,4 @@ class AppController:
             self.data_manager.importiere_berichte(importierte_daten)
         
         return erfolgreich, fehlerhaft
-
+    

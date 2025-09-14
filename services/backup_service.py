@@ -11,6 +11,7 @@ import shutil
 from typing import Tuple
 
 from core import config
+from core.data_manager import DataManager
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,9 @@ class BackupService:
     """
     Stellt Methoden zum Sichern und Wiederherstellen von Anwendungsdaten bereit.
     """
+    def __init__(self, data_manager: DataManager):
+        self.data_manager = data_manager
+
     def export_all_data_to_zip(self, zip_path: str) -> Tuple[bool, str]:
         """Sammelt alle Datendateien UND erstellten Berichte und speichert sie in einem ZIP-Archiv."""
         try:
@@ -56,6 +60,11 @@ class BackupService:
             if os.path.exists(data_old): shutil.rmtree(data_old)
             if os.path.exists(ausgabe_old): shutil.rmtree(ausgabe_old)
 
+            # --- KORREKTUR START ---
+            # Datenbankverbindung schließen, um Sperre aufzuheben
+            self.data_manager.close()
+            # --- KORREKTUR ENDE ---
+
             # Aktuelle Daten sichern durch Umbenennen
             if os.path.exists(config.DATA_ORDNER):
                 os.rename(config.DATA_ORDNER, data_old)
@@ -67,9 +76,13 @@ class BackupService:
                     # Extrahiert alle Dateien in das Basisverzeichnis der Anwendung
                     zipf.extractall(config.BASE_DIR) 
                 
-                # Wenn erfolgreich, alte Backups löschen
-                if os.path.exists(data_old): shutil.rmtree(data_old)
-                if os.path.exists(ausgabe_old): shutil.rmtree(ausgabe_old)
+                # Wenn erfolgreich, alte Backups löschen (mit Fehlerbehandlung)
+                try:
+                    if os.path.exists(data_old): shutil.rmtree(data_old)
+                    if os.path.exists(ausgabe_old): shutil.rmtree(ausgabe_old)
+                except OSError as e:
+                    logger.warning(f"Konnte alten Backup-Ordner nicht löschen: {e}. Dies ist kein kritischer Fehler.")
+
                 
                 logger.info(f"Alle Daten erfolgreich aus '{zip_path}' importiert.")
                 return True, "Alle Daten und Berichte wurden erfolgreich importiert."
@@ -85,6 +98,13 @@ class BackupService:
                     os.rename(ausgabe_old, config.AUSGABE_ORDNER)
                 return False, f"Fehler beim Import: {e}. Der vorherige Zustand wurde wiederhergestellt."
 
+            finally:
+                # --- KORREKTUR START ---
+                # Datenbankverbindung wiederherstellen, egal was passiert
+                self.data_manager.connect()
+                # --- KORREKTUR ENDE ---
+
         except Exception as e:
             logger.error(f"Fehler beim Importieren der Daten aus '{zip_path}'.", exc_info=True)
             return False, f"Fehler beim Importieren der Daten: {e}"
+        
