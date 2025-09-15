@@ -1,0 +1,9 @@
+.venv/
+
+logs/
+
+Ausbildungsnachweise/
+
+data/
+
+exe_generator.spec
