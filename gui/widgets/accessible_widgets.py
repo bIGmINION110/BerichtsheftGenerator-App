@@ -41,6 +41,9 @@ class AccessibleCTkEntry(ctk.CTkEntry, AccessibleBase):
         super().__init__(master, **kwargs)
         self._initialize_accessibility(accessible_text, status_callback, speak_callback)
         self.bind("<FocusIn>", self._on_get_focus_custom, add="+")
+        self.bind("<KeyRelease-Left>", self._speak_current_char)
+        self.bind("<KeyRelease-Right>", self._speak_current_char)
+        self.bind("<Control-BackSpace>", self._delete_word_backwards)
 
         if focus_color:
             self._focus_color = focus_color
@@ -53,9 +56,53 @@ class AccessibleCTkEntry(ctk.CTkEntry, AccessibleBase):
         """Liest den aktuellen Inhalt nach einer kurzen Verzögerung vor, ohne die Beschreibung zu unterbrechen."""
         content = self.get()
         if content and self.speak_callback:
-            # GEÄNDERT: 'interrupt' auf False gesetzt und Verzögerung leicht erhöht.
-            # So wird die Beschreibung des Feldes nicht unterbrochen.
             self.after(200, lambda: self.speak_callback(f"Inhalt: {content}", interrupt=False))
+
+    def _delete_word_backwards(self, event: Any = None) -> str:
+        """Löscht das Wort links vom Cursor und gibt es für den Screenreader aus."""
+        if not self.speak_callback:
+            return "break"
+
+        try:
+            cursor_pos = self.index(tk.INSERT)
+            line_content = self.get()
+            
+            # Text vor dem Cursor
+            text_before_cursor = line_content[:cursor_pos]
+            
+            words = text_before_cursor.split()
+            if not words:
+                return "break"
+
+            word_to_delete = words[-1]
+            word_start_index = text_before_cursor.rfind(word_to_delete)
+            
+            self.delete(word_start_index, cursor_pos)
+            self.speak_callback(f"{word_to_delete}", interrupt=True)
+
+        except tk.TclError:
+            pass
+        
+        return "break"
+
+    def _speak_current_char(self, event: Any = None):
+        """Liest das Zeichen unter dem Cursor vor."""
+        if not self.speak_callback:
+            return
+        
+        try:
+            cursor_pos = self.index(tk.INSERT)
+            if event and event.keysym == 'Left':
+                char = self.get()[cursor_pos - 1] if cursor_pos > 0 else None
+            else:
+                char = self.get()[cursor_pos] if cursor_pos < len(self.get()) else None
+
+            if char and not char.isspace():
+                self.speak_callback(char, interrupt=True)
+            elif char and char.isspace():
+                self.speak_callback("Leerzeichen", interrupt=True)
+        except (tk.TclError, IndexError):
+            pass
             
     def _on_get_focus_border(self, event: Any = None):
         self.configure(border_width=2, border_color=self._focus_color)
@@ -172,6 +219,7 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
         self.bind("<KeyRelease-Down>", self._speak_current_line)
         self.bind("<KeyRelease-Left>", self._speak_current_char)
         self.bind("<KeyRelease-Right>", self._speak_current_char)
+        self.bind("<Control-BackSpace>", self._delete_word_backwards)
 
         if focus_color:
             self._focus_color = focus_color
@@ -184,6 +232,35 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
         """Beim Fokus: Beschreibung und dann die aktuelle Zeile vorlesen."""
         self._speak_and_update_status(event)
         self.after(200, self._speak_current_line)
+
+    def _delete_word_backwards(self, event: Any = None) -> str:
+        """Löscht das Wort links vom Cursor und gibt es für den Screenreader aus."""
+        if not self.speak_callback:
+            return "break"
+
+        try:
+            cursor_index = self.index(tk.INSERT)
+            line_start = self.index(f"{cursor_index} linestart")
+            line_content = self.get(line_start, cursor_index)
+            
+            # Finde das zu löschende Wort
+            words = line_content.split()
+            if not words:
+                return "break" # Nichts zu löschen
+            
+            word_to_delete = words[-1]
+            word_start_index = line_content.rfind(word_to_delete)
+            
+            # Berechne den Start-Index relativ zum gesamten Text
+            delete_start_index = f"{cursor_index.split('.')[0]}.{word_start_index}"
+            
+            self.delete(delete_start_index, cursor_index)
+            self.speak_callback(f"{word_to_delete}", interrupt=True)
+            
+        except tk.TclError:
+            pass # Fehler ignorieren, falls etwas schiefgeht
+        
+        return "break" # Verhindert, dass das Standard-Event ausgeführt wird
 
     def _speak_current_line(self, event: Any = None):
         """Liest den Inhalt der Zeile vor, in der sich der Cursor befindet."""
@@ -207,9 +284,17 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
             return
         
         try:
-            char = self.get(tk.INSERT)
+            # Bei Linkspfeil wollen wir das Zeichen *vor* der neuen Position
+            if event and event.keysym == 'Left':
+                char = self.get(f"{tk.INSERT}-1c")
+            else:
+                char = self.get(tk.INSERT)
+                
             if char and not char.isspace():
                 self.speak_callback(char, interrupt=True)
+            elif char and char.isspace():
+                self.speak_callback("Leerzeichen", interrupt=True)
+
         except tk.TclError:
             pass
             
