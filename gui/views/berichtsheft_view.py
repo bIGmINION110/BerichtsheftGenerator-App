@@ -58,7 +58,6 @@ class BerichtsheftView(ctk.CTkFrame):
         header_data_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
         header_data_frame.grid_columnconfigure(1, weight=1)
         
-        # Erstellt den Frame für persönliche Daten, der später ein-/ausgeblendet wird
         self._create_kopfdaten_widgets(header_data_frame)
         self._create_wochendaten_widgets(header_data_frame)
         
@@ -66,9 +65,7 @@ class BerichtsheftView(ctk.CTkFrame):
         self._create_action_buttons()
 
     def _create_kopfdaten_widgets(self, parent):
-        """Erstellt den Frame, der nur angezeigt wird, wenn keine Daten in den Einstellungen sind."""
         self.kopf_frame = ctk.CTkFrame(parent)
-        # grid() wird in on_show() aufgerufen
         
         self.kopf_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(self.kopf_frame, text="Persönliche Daten (Bitte in Einstellungen festlegen)", font=self.bold_font).grid(row=0, column=0, columnspan=2, pady=15, padx=15, sticky="w")
@@ -85,10 +82,8 @@ class BerichtsheftView(ctk.CTkFrame):
         self.start_entry.grid(row=2, column=1, sticky="ew", padx=15, pady=8)
         self.default_border_color = self.start_entry.cget("border_color")
         
-        # Trace zur Validierung des Datumsformats hinzufügen
         self.startdatum_var.trace_add("write", self._validate_start_date)
 
-        # Button, um direkt zu den Einstellungen zu springen
         settings_button = AccessibleCTkButton(self.kopf_frame, text="Zu den Einstellungen", command=lambda: self.app.show_view("settings"), 
                                               font=self.main_font, focus_color=config.FOCUS_COLOR,
                                               accessible_text="Öffnet die Einstellungen, um Name und Startdatum festzulegen.",
@@ -102,7 +97,7 @@ class BerichtsheftView(ctk.CTkFrame):
         woche_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(woche_frame, text="Berichtsdaten", font=self.bold_font).grid(row=0, column=0, columnspan=3, pady=15, padx=15, sticky="w")
         ctk.CTkLabel(woche_frame, text="Bericht Nr.:", font=self.main_font).grid(row=1, column=0, sticky="w", padx=15, pady=8)
-        nummer_entry = AccessibleCTkEntry(woche_frame, textvariable=self.nummer_var, font=self.main_font, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für die fortlaufende Berichtsnummer.", status_callback=self.app.update_status, speak_callback=self.app.speak)
+        nummer_entry = AccessibleCTkEntry(woche_frame, textvariable=self.nummer_var, font=self.main_font, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für die fortlaufende Berichtsnummer. Pfeiltasten Hoch/Runter ändern den Wert.", status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='numeric')
         nummer_entry.grid(row=1, column=1, columnspan=2, sticky="ew", padx=15, pady=8)
         ctk.CTkLabel(woche_frame, text="Woche wählen:", font=self.main_font).grid(row=2, column=0, sticky="w", padx=15, pady=8)
         
@@ -113,23 +108,25 @@ class BerichtsheftView(ctk.CTkFrame):
             self.kalender = DateEntry(kalender_container, width=12, date_pattern='dd.mm.y', font=("Segoe UI", 11))
             self.kalender.pack(side="left")
             self.kalender.bind("<<DateEntrySelected>>", self._update_kw_from_kalender)
-            self.kalender.bind("<FocusIn>", lambda e: self.app.update_status("Kalender zur Auswahl des Berichtsdatums. Ändert automatisch die Kalenderwoche."))
+            self.kalender.bind("<FocusIn>", lambda e: self.app.update_status("Kalender zur Auswahl des Berichtsdatums. Pfeiltasten Hoch/Runter ändern den Tag."))
+            self.kalender.bind("<Up>", self._navigate_date)
+            self.kalender.bind("<Down>", self._navigate_date)
         else:
             ctk.CTkLabel(kalender_container, text="tkcalendar fehlt!", text_color="orange").pack(side="left")
 
         ctk.CTkLabel(kalender_container, text="KW:", font=self.main_font).pack(side="left", padx=(10, 2))
         self.kw_entry = AccessibleCTkEntry(kalender_container, textvariable=self.kw_var, width=40, font=self.main_font,
                                            focus_color=config.FOCUS_COLOR,
-                                           accessible_text="Manuelle Eingabe der Kalenderwoche.",
+                                           accessible_text="Manuelle Eingabe der Kalenderwoche. Pfeiltasten Hoch/Runter ändern den Wert.",
                                            status_callback=self.app.update_status,
-                                           speak_callback=self.app.speak)
+                                           speak_callback=self.app.speak, navigation_mode='numeric')
         self.kw_entry.pack(side="left")
         ctk.CTkLabel(kalender_container, text="Jahr:", font=self.main_font).pack(side="left", padx=(10, 2))
         self.jahr_entry = AccessibleCTkEntry(kalender_container, textvariable=self.jahr_var, width=60, font=self.main_font,
                                              focus_color=config.FOCUS_COLOR,
-                                             accessible_text="Manuelle Eingabe des Jahres.",
+                                             accessible_text="Manuelle Eingabe des Jahres. Pfeiltasten Hoch/Runter ändern den Wert.",
                                              status_callback=self.app.update_status,
-                                             speak_callback=self.app.speak)
+                                             speak_callback=self.app.speak, navigation_mode='numeric')
         self.jahr_entry.pack(side="left")
 
         self.kw_var.trace_add("write", self._update_kalender_from_kw)
@@ -157,9 +154,9 @@ class BerichtsheftView(ctk.CTkFrame):
             stunden_var = tk.StringVar()
             stunden_entry = AccessibleCTkEntry(master=header_frame, textvariable=stunden_var, width=70, font=self.main_font, 
                                                focus_color=config.FOCUS_COLOR,
-                                               accessible_text=f"Eingabefeld für die Stundenanzahl am {tag_name}.", 
+                                               accessible_text=f"Eingabefeld für die Stundenanzahl am {tag_name}. Pfeiltasten Hoch/Runter ändern die Zeit um 15 Minuten.", 
                                                status_callback=self.app.update_status,
-                                               speak_callback=self.app.speak)
+                                               speak_callback=self.app.speak, navigation_mode='time')
             stunden_entry.pack(side="left")
             
             def on_typ_select_factory(s_var, t_name):
@@ -219,13 +216,11 @@ class BerichtsheftView(ctk.CTkFrame):
         name_azubi = konfig.get("name_azubi", "")
         startdatum_ausbildung = konfig.get("startdatum_ausbildung", "")
 
-        # Blendet den Frame für persönliche Daten aus, wenn diese in den Einstellungen gesetzt sind
         if name_azubi and self.app.logic.valide_datumsformat(startdatum_ausbildung):
             self.kopf_frame.grid_forget()
         else:
             self.kopf_frame.grid(row=0, column=0, padx=(0, 10), pady=10, sticky="nsew")
 
-        # Setzt die internen Variablen, damit sie für die Berichtserstellung verfügbar sind
         self.name_var.set(name_azubi)
         self.startdatum_var.set(startdatum_ausbildung)
         
@@ -295,7 +290,6 @@ class BerichtsheftView(ctk.CTkFrame):
             self.app.speak(status_message, interrupt=False)
 
     def _update_kalender_from_kw(self, *args: Any):
-        """Aktualisiert das Kalenderdatum, wenn KW oder Jahr manuell geändert werden."""
         if not self.kalender or not self.winfo_viewable(): return
         
         try:
@@ -313,13 +307,27 @@ class BerichtsheftView(ctk.CTkFrame):
         except (ValueError, TypeError):
             pass
 
+    def _navigate_date(self, event: Any):
+        """Navigiert das Datum im Kalender-Widget um einen Tag."""
+        if not self.kalender:
+            return "break"
+        
+        direction = 1 if event.keysym == "Up" else -1
+        try:
+            current_date = self.kalender.get_date()
+            new_date = current_date + timedelta(days=direction)
+            self.kalender.set_date(new_date)
+            # Das Event <<DateEntrySelected>> wird automatisch ausgelöst
+        except Exception:
+            pass # Fehler ignorieren
+        return "break"
+
     def _validate_start_date(self, *args: Any):
         datum_str = self.startdatum_var.get()
         is_valid = self.app.logic.valide_datumsformat(datum_str) if datum_str else True
         if self.start_entry and self.default_border_color:
             if is_valid:
                 self.start_entry.configure(border_color=self.default_border_color)
-                # Nur speichern, wenn das Format gültig ist
                 self.app.speichere_persoenliche_daten(self.name_var.get(), datum_str)
             else:
                 self.start_entry.configure(border_color=config.ERROR_COLOR)
@@ -354,4 +362,3 @@ class BerichtsheftView(ctk.CTkFrame):
             self.tabview.set(prev_tab_name)
         except Exception:
             self.tabview.set(config.WOCHENTAGE[0])
-
