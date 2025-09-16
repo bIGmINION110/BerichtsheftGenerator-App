@@ -350,6 +350,7 @@ class BerichtsheftApp(ctk.CTk):
         if erfolg:
             self.update_status(nachricht)
             self.views["berichtsheft"].on_show()
+            self.clear_and_prepare_next_report()
         else:
             messagebox.showerror("Fehler", nachricht)
         self._generation_complete()
@@ -362,6 +363,24 @@ class BerichtsheftApp(ctk.CTk):
         if berichtsheft_view:
             berichtsheft_view.create_report_button.configure(state="normal")
             self.update_status("Bereit.")
+
+    def clear_and_prepare_next_report(self):
+        """Leert die Felder und bereitet den nächsten Bericht vor."""
+        berichtsheft_view = self.views["berichtsheft"]
+        
+        # Felder leeren und Zeiten zurücksetzen
+        for widgets in berichtsheft_view.tages_widgets:
+            widgets["taetigkeiten"].delete("1.0", "end")
+        
+        # Datum und Nummer fortschreiben
+        current_date = berichtsheft_view.kalender.get_date()
+        next_week = current_date + timedelta(weeks=1)
+        berichtsheft_view.kalender.set_date(next_week)
+        
+        current_number = int(berichtsheft_view.nummer_var.get())
+        berichtsheft_view.nummer_var.set(str(current_number + 1))
+        
+        self.update_status("Bereit für den nächsten Bericht.")
 
     def _setup_shortcuts(self) -> None:
         """Definiert globale Tastenkürzel."""
@@ -437,4 +456,3 @@ class BerichtsheftApp(ctk.CTk):
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
-        

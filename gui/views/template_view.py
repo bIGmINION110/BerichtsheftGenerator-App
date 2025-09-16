@@ -143,4 +143,3 @@ class TemplateView(ctk.CTkFrame):
             self.app.speak(f"Vorlage '{template_text[:30]}...' eingefügt.")
         else:
             messagebox.showwarning("Fehler", "Konnte kein aktives Textfeld finden. Bitte wählen Sie einen Tag im Berichtsheft-Tab aus.")
-

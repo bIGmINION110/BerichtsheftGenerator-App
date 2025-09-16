@@ -58,6 +58,8 @@ class AccessibleCTkEntry(ctk.CTkEntry, AccessibleBase):
         if self.navigation_mode:
             self.bind("<Up>", self._handle_arrow_navigation)
             self.bind("<Down>", self._handle_arrow_navigation)
+        
+        self.configure(state="readonly")
 
     def _handle_arrow_navigation(self, event: Any):
         """Verarbeitet die Pfeiltasten-Navigation basierend auf dem Modus."""
@@ -66,10 +68,12 @@ class AccessibleCTkEntry(ctk.CTkEntry, AccessibleBase):
 
         direction = 1 if event.keysym == "Up" else -1
         
+        self.configure(state="normal")
         if self.navigation_mode == 'numeric':
             self._navigate_numeric(direction)
         elif self.navigation_mode == 'time':
             self._navigate_time(direction)
+        self.configure(state="readonly")
             
         return "break" # Verhindert die standardmäßige Cursor-Bewegung
 

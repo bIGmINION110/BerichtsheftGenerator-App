@@ -95,7 +95,7 @@ class SettingsView(ctk.CTkFrame):
             entry = AccessibleCTkEntry(
                 stunden_frame, textvariable=self.default_stunden_vars[tag], width=100, focus_color=config.FOCUS_COLOR,
                 accessible_text=f"Standard-Stunden für {tag} im Format HH:MM.",
-                status_callback=self.app.update_status, speak_callback=self.app.speak)
+                status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='time')
             entry.grid(row=i+1, column=1, padx=(0, 15), pady=8, sticky="w")
 
         # --- Standard-Exportformat ---
@@ -159,4 +159,3 @@ class SettingsView(ctk.CTkFrame):
             "default_format": self.default_format_var.get()
         }
         self.app.speichere_einstellungen(neue_einstellungen)
-

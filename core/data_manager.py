@@ -331,4 +331,20 @@ class DataManager:
             logger.error(f"Fehler beim Speichern der Vorlagen in die DB: {e}", exc_info=True)
             self._conn.rollback()
             return False
-        
+
+    def loesche_bericht(self, bericht_id: str) -> bool:
+        """Löscht einen einzelnen Bericht und die zugehörigen Tageseinträge."""
+        self.connect()
+        if not self._conn:
+            return False
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute("DELETE FROM tagebucheintraege WHERE bericht_id = ?", (bericht_id,))
+            cursor.execute("DELETE FROM berichte WHERE bericht_id = ?", (bericht_id,))
+            self._conn.commit()
+            logger.info(f"Bericht mit ID '{bericht_id}' wurde gelöscht.")
+            return True
+        except sqlite3.Error as e:
+            logger.error(f"Fehler beim Löschen des Berichts '{bericht_id}': {e}", exc_info=True)
+            self._conn.rollback()
+            return False

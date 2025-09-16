@@ -150,4 +150,7 @@ class AppController:
             self.data_manager.importiere_berichte(importierte_daten)
         
         return erfolgreich, fehlerhaft
-    
+
+    def delete_bericht(self, bericht_id: str) -> bool:
+        """Löscht einen Bericht aus der Datenbank."""
+        return self.data_manager.loesche_bericht(bericht_id)
