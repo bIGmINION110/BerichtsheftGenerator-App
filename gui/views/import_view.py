@@ -7,6 +7,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import logging
 from ..widgets.accessible_widgets import AccessibleCTkButton
+from core import config # NEUER IMPORT
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,9 @@ class ImportView(ctk.CTkFrame):
         self.app = app_logic
         self.controller = app_logic.controller
         
+        # --- VERBESSERUNG: Plattformunabhängige Schriftart verwenden ---
+        self.title_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=16, weight="bold")
+        
         self._create_widgets()
 
     def _create_widgets(self) -> None:
@@ -32,7 +36,7 @@ class ImportView(ctk.CTkFrame):
         info_frame.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
         info_frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(info_frame, text="Berichte aus Word-Dateien importieren", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
+        ctk.CTkLabel(info_frame, text="Berichte aus Word-Dateien importieren", font=self.title_font).pack(pady=(10, 5))
         info_text = (
             "Diese Funktion versucht, die Daten aus bestehenden .docx-Berichtsheften zu extrahieren.\n"
             "Wählen Sie eine oder mehrere Dateien aus. Die importierten Daten werden zur Statistik\n"
@@ -97,4 +101,3 @@ class ImportView(ctk.CTkFrame):
             messagebox.showwarning("Import abgeschlossen",
                                    "Es konnten keine Berichte importiert werden. "
                                    "Stellen Sie sicher, dass die Dateien dem erwarteten Format entsprechen.")
-

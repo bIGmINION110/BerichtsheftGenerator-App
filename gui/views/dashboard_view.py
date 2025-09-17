@@ -7,6 +7,8 @@ import customtkinter as ctk
 from collections import defaultdict
 from typing import List, Dict, Any
 
+from core import config # NEUER IMPORT
+
 class DashboardView(ctk.CTkFrame):
     """
     Eine Ansicht, die eine Zusammenfassung der aktuellen Wochendaten aus der
@@ -16,6 +18,11 @@ class DashboardView(ctk.CTkFrame):
         super().__init__(master)
         self.app = app_logic
         
+        # --- VERBESSERUNG: Plattformunabhängige Schriftart verwenden ---
+        self.title_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=18, weight="bold")
+        self.main_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=14)
+        self.total_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=16, weight="bold")
+
         self._create_widgets()
 
     def on_show(self):
@@ -27,7 +34,7 @@ class DashboardView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(self, text="Zusammenfassung der Woche", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, padx=15, pady=15)
+        ctk.CTkLabel(self, text="Zusammenfassung der Woche", font=self.title_font).grid(row=0, column=0, padx=15, pady=15)
 
         self.summary_frame = ctk.CTkFrame(self)
         self.summary_frame.grid(row=1, column=0, padx=15, pady=10, sticky="nsew")
@@ -66,11 +73,11 @@ class DashboardView(ctk.CTkFrame):
         # UI-Elemente für die Zusammenfassung erstellen
         for typ, stunden in sorted(stunden_pro_typ.items()):
             label_text = f"{typ}: {stunden:.2f} Stunden"
-            ctk.CTkLabel(self.summary_frame, text=label_text, font=ctk.CTkFont(size=14)).pack(anchor="w", padx=20, pady=5)
+            ctk.CTkLabel(self.summary_frame, text=label_text, font=self.main_font).pack(anchor="w", padx=20, pady=5)
             
         # Trennlinie
         ctk.CTkFrame(self.summary_frame, height=2, fg_color="gray50").pack(fill="x", padx=20, pady=10)
 
         # Gesamtstunden anzeigen
         total_label_text = f"Gesamt: {gesamtstunden:.2f} Stunden"
-        ctk.CTkLabel(self.summary_frame, text=total_label_text, font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=20, pady=5)
+        ctk.CTkLabel(self.summary_frame, text=total_label_text, font=self.total_font).pack(anchor="w", padx=20, pady=5)

@@ -81,31 +81,21 @@ class BerichtsheftApp(ctk.CTk):
 
     def _initialize_speaker(self) -> Optional[Any]:
         """
-        Prüft gezielt, ob ein unterstützter Screenreader AKTIV ist.
+        Prüft plattformunabhängig, ob ein Screenreader aktiv ist.
         """
         if not ACCESSIBLE_OUTPUT_AVAILABLE:
             logging.info("Bibliothek 'accessible_output2' nicht verfügbar. Sprachausgabe deaktiviert.")
             return None
-
-        # Wir prüfen bekannte Screenreader in einer festen Reihenfolge.
-        # WICHTIG: Die .is_active() Methode wird hier auf die spezifische Instanz angewendet.
+        
         try:
-            # 1. Prüfe auf NVDA
-            nvda = outputs.nvda.NVDA()
-            if nvda.is_active():
-                logging.info("Aktiver Screenreader 'NVDA' erkannt. Sprachausgabe wird aktiviert.")
-                return nvda
-
-            # 2. Prüfe auf JAWS
-            jaws = outputs.jaws.JAWS()
-            if jaws.is_active():
-                logging.info("Aktiver Screenreader 'JAWS' erkannt. Sprachausgabe wird aktiviert.")
-                return jaws
-            
-            # Wenn kein unterstützter Screenreader aktiv ist:
-            logging.info("Kein dedizierter Screenreader (NVDA/JAWS) aktiv. Sprachausgabe bleibt deaktiviert.")
-            return None
-
+            # Versucht, den ersten verfügbaren und aktiven Screenreader zu finden.
+            speaker = outputs.auto.Auto()
+            if speaker.is_active():
+                logging.info(f"Aktiver Screenreader '{speaker.name}' erkannt. Sprachausgabe wird aktiviert.")
+                return speaker
+            else:
+                logging.info("Kein aktiver Screenreader gefunden. Sprachausgabe bleibt deaktiviert.")
+                return None
         except Exception as e:
             logging.warning(f"Fehler bei der Initialisierung des Screenreaders: {e}")
             return None
@@ -121,8 +111,15 @@ class BerichtsheftApp(ctk.CTk):
         self.title(f"{config.APP_NAME} {config.VERSION}")
         self.geometry("1400x900")
         self.minsize(1100, 750)
-        if os.path.exists(config.ICON_DATEI):
-            self.iconbitmap(config.ICON_DATEI)
+        
+        # --- VERBESSERUNG: Plattformabhängiges Icon-Handling ---
+        # .ico wird nur unter Windows zuverlässig unterstützt.
+        if sys.platform == "win32" and os.path.exists(config.ICON_DATEI):
+            try:
+                self.iconbitmap(config.ICON_DATEI)
+            except tk.TclError:
+                logger.warning("Konnte .ico-Datei nicht laden. Überspringe.")
+
         ctk.set_appearance_mode("dark")
         self.protocol("WM_DELETE_WINDOW", self.quit)
 
@@ -244,18 +241,18 @@ class BerichtsheftApp(ctk.CTk):
         """Öffnet den Ausgabeordner im Dateimanager des Betriebssystems."""
         folder_path = config.AUSGABE_ORDNER
         try:
-            if not os.path.isdir(folder_path):
-                os.makedirs(folder_path)
+            os.makedirs(folder_path, exist_ok=True)
             
             if sys.platform == "win32":
-                os.startfile(folder_path)
+                os.startfile(os.path.realpath(folder_path))
             elif sys.platform == "darwin":
-                subprocess.Popen(["open", folder_path])
-            else: # Linux
-                subprocess.Popen(["xdg-open", folder_path])
+                subprocess.run(["open", folder_path], check=True)
+            else: # Linux und andere
+                subprocess.run(["xdg-open", folder_path], check=True)
+
             self.update_status(f"Ordner '{folder_path}' geöffnet.")
-        except Exception as e:
-            messagebox.showerror("Fehler", f"Der Ordner '{folder_path}' konnte nicht geöffnet werden: {e}")
+        except (OSError, subprocess.SubprocessError, FileNotFoundError) as e:
+            messagebox.showerror("Fehler", f"Der Ordner '{folder_path}' konnte nicht geöffnet werden:\n{e}")
             logger.error(f"Fehler beim Öffnen des Ausgabeordners: {e}", exc_info=True)
 
     def speichere_persoenliche_daten(self, name: str, startdatum: str):

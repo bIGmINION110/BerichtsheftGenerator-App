@@ -8,19 +8,22 @@ from tkinter import messagebox
 from collections import defaultdict
 from typing import Dict, Any
 import logging
+import os  # NEUER IMPORT
 
 from ..widgets.accessible_widgets import AccessibleCTkButton
-from core import config # Import für FOCUS_COLOR
+from core import config 
 
 try:
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
+    from matplotlib.font_manager import fontManager # NEUER IMPORT
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
+logger = logging
 
 class StatisticsView(ctk.CTkFrame):
     """Ansicht zur Anzeige von Statistiken über alle erstellten Berichte."""
@@ -33,6 +36,10 @@ class StatisticsView(ctk.CTkFrame):
         self.pie_chart_canvas = None
         self.bar_chart_canvas = None
 
+        # --- VERBESSERUNG: Schriftart für Matplotlib plattformunabhängig festlegen ---
+        if MATPLOTLIB_AVAILABLE:
+            self._setup_matplotlib_font()
+
         self._create_widgets()
         
     def on_show(self):
@@ -40,6 +47,20 @@ class StatisticsView(ctk.CTkFrame):
         self._load_and_display_stats()
         if not MATPLOTLIB_AVAILABLE:
             self._show_matplotlib_error()
+
+    def _setup_matplotlib_font(self):
+        """Sucht die mitgelieferte Verdana-Schriftart und registriert sie für Matplotlib."""
+        try:
+            font_path = os.path.join(config.FONTS_ORDNER, 'verdana.ttf')
+            if os.path.exists(font_path):
+                fontManager.addfont(font_path)
+                plt.rcParams['font.family'] = 'Verdana'
+                logger.info("Matplotlib-Schriftart erfolgreich auf mitgelieferte 'Verdana' gesetzt.")
+            else:
+                logger.warning("Verdana-Schriftart nicht im assets-Ordner gefunden. Matplotlib verwendet eine Fallback-Schriftart.")
+        except Exception as e:
+            logger.error(f"Fehler beim Setzen der Matplotlib-Schriftart: {e}", exc_info=True)
+
 
     def _get_theme_colors(self) -> Dict[str, str]:
         """Gibt die passenden Farben für den aktuellen App-Modus zurück."""

@@ -10,7 +10,7 @@ from typing import List, Tuple
 
 # --- Anwendungsinformationen ---
 APP_NAME: str = "Berichtsheft-Generator"
-VERSION: str = "17.4.0"
+VERSION: str = "17.5.0"
 GITHUB_REPO_URL: str = "https://api.github.com/repos/bigminion110/berichtsheftgenerator-app/releases/latest"
 
 # --- Verzeichnisse und Dateipfade ---
@@ -41,19 +41,32 @@ ICON_DATEI: str = os.path.join(ASSETS_ORDNER, "icon.ico")
 # --- Kernlogik ---
 WOCHENTAGE: List[str] = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 
+# --- VERBESSERUNG: Plattformabhängige Schriftart für die GUI ---
+def get_ui_font() -> str:
+    """Wählt die beste verfügbare Systemschriftart für die Benutzeroberfläche."""
+    if sys.platform == "win32":
+        return "Segoe UI"
+    elif sys.platform == "darwin": # macOS
+        return "SF Display" # Moderne Apple-Schriftart, ansonsten Fallback auf Helvetica
+    else: # Linux und andere
+        return "DejaVu Sans" # Eine der am weitesten verbreiteten, guten Linux-UI-Schriftarten
+
+UI_FONT_FAMILY = get_ui_font()
+
 # --- GUI-Design ---
 # Ein modernes, blau-basiertes Farbschema
 ACCENT_COLOR: str = "#3B82F6"  # Modernes Blau
 HOVER_COLOR: str = "#60A5FA"   # Helleres Blau für Hover-Effekte
 FRAME_BG_COLOR: Tuple[str, str] = ("#F1F5F9", "#1E293B") # Helles und dunkles Schiefergrau
 SIDEBAR_BG_COLOR: Tuple[str, str] = ("#FFFFFF", "#111827") # Weiß und sehr dunkles Grau
-SIDEBAR_BUTTON_FONT: Tuple[str, int] = ("Segoe UI", 16)
+SIDEBAR_BUTTON_FONT: Tuple[str, int] = (UI_FONT_FAMILY, 16) # Verwendet die neue Schriftart
 SIDEBAR_BUTTON_INACTIVE_COLOR: str = "transparent"
 ERROR_COLOR: str = "#EF4444"       # Kräftiges Rot
 ERROR_HOVER_COLOR: str = "#DC2626"  # Dunkleres Rot
 FOCUS_COLOR: str = "#2563EB"       # Ein etwas dunkleres Blau für den Fokus
 
 # --- Generator-Einstellungen ---
+# Diese Schriftarten werden mitgeliefert, daher sind sie plattformunabhängig
 DOCX_FONT_HEADLINE: str = 'Verdana'
 DOCX_FONT_BODY: str = 'Verdana'
 PDF_FONT_HEADLINE: Tuple[str, str] = ('Verdana', 'B')

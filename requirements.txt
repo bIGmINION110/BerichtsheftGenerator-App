@@ -1,3 +1,6 @@
+# ==========================================================
+# Bibliotheken für alle Betriebssysteme
+# ==========================================================
 accessible-output2==0.17
 altgraph==0.17.4
 babel==2.17.0
@@ -14,7 +17,6 @@ lxml==6.0.1
 matplotlib==3.10.6
 numpy==2.3.2
 packaging==25.0
-pefile==2023.2.7
 pillow==11.3.0
 platform_utils==1.5.10
 platformdirs==4.4.0
@@ -23,12 +25,23 @@ pyinstaller-hooks-contrib==2025.8
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-docx==1.2.0
-pywin32==311
-pywin32-ctypes==0.2.3
 setuptools==80.9.0
 six==1.17.0
 tkcalendar==1.6.1
 typing_extensions==4.15.0
+
+# ==========================================================
+# Betriebssystem-spezifische Bibliotheken
+# ==========================================================
+
+# Für tiefe Windows-Integration (keine Alternative auf anderen Systemen)
+pywin32==311 ; sys_platform == 'win32'
+pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
+
+# Zum Analysieren von ausführbaren Dateien (je nach OS)
+pefile==2023.2.7 ; sys_platform == 'win32'      # für .exe/.dll unter Windows
+pyelftools ; sys_platform == 'linux'           # für ELF-Dateien unter Linux
+macholib ; sys_platform == 'darwin'            # für Mach-O-Dateien unter macOS
 
 # To install the dependencies:
 # pip install -r requirements.txt

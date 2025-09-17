@@ -18,6 +18,11 @@ class SettingsView(ctk.CTkFrame):
         self.app = app_logic
         self.data_manager = app_logic.data_manager
 
+        # --- VERBESSERUNG: Plattformunabhängige Schriftart verwenden ---
+        self.main_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=13)
+        self.bold_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=14, weight="bold")
+        self.title_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=18, weight="bold")
+
         # Variablen für UI-Elemente
         self.name_var = tk.StringVar()
         self.startdatum_var = tk.StringVar()
@@ -37,7 +42,7 @@ class SettingsView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1) 
 
-        ctk.CTkLabel(self, text="Anwendungseinstellungen", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, padx=15, pady=15, sticky="w")
+        ctk.CTkLabel(self, text="Anwendungseinstellungen", font=self.title_font).grid(row=0, column=0, padx=15, pady=15, sticky="w")
 
         # --- Frame für alle Einstellungen ---
         settings_container = ctk.CTkScrollableFrame(self)
@@ -48,18 +53,18 @@ class SettingsView(ctk.CTkFrame):
         persoenliche_daten_frame = ctk.CTkFrame(settings_container)
         persoenliche_daten_frame.pack(fill="x", padx=0, pady=5)
         persoenliche_daten_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(persoenliche_daten_frame, text="Persönliche Daten", font=ctk.CTkFont(size=14, weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
+        ctk.CTkLabel(persoenliche_daten_frame, text="Persönliche Daten", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
         
-        ctk.CTkLabel(persoenliche_daten_frame, text="Name des Azubis:").grid(row=1, column=0, padx=(15, 5), pady=8, sticky="w")
+        ctk.CTkLabel(persoenliche_daten_frame, text="Name des Azubis:", font=self.main_font).grid(row=1, column=0, padx=(15, 5), pady=8, sticky="w")
         name_entry = AccessibleCTkEntry(
-            persoenliche_daten_frame, textvariable=self.name_var, focus_color=config.FOCUS_COLOR,
+            persoenliche_daten_frame, textvariable=self.name_var, font=self.main_font, focus_color=config.FOCUS_COLOR,
             accessible_text="Name des Auszubildenden. Wird für alle Berichte verwendet.",
             status_callback=self.app.update_status, speak_callback=self.app.speak)
         name_entry.grid(row=1, column=1, padx=(0, 15), pady=8, sticky="ew")
 
-        ctk.CTkLabel(persoenliche_daten_frame, text="Start der Ausbildung:").grid(row=2, column=0, padx=(15, 5), pady=8, sticky="w")
+        ctk.CTkLabel(persoenliche_daten_frame, text="Start der Ausbildung:", font=self.main_font).grid(row=2, column=0, padx=(15, 5), pady=8, sticky="w")
         start_entry = AccessibleCTkEntry(
-            persoenliche_daten_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", focus_color=config.FOCUS_COLOR,
+            persoenliche_daten_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=self.main_font, focus_color=config.FOCUS_COLOR,
             accessible_text="Startdatum der Ausbildung im Format Tag.Monat.Jahr.",
             status_callback=self.app.update_status, speak_callback=self.app.speak)
         start_entry.grid(row=2, column=1, padx=(0, 15), pady=8, sticky="ew")
@@ -73,13 +78,13 @@ class SettingsView(ctk.CTkFrame):
         typen_frame = ctk.CTkFrame(defaults_frame, fg_color="transparent")
         typen_frame.grid(row=0, column=0, padx=15, pady=10, sticky="ns")
         typen_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(typen_frame, text="Standard-Typen", font=ctk.CTkFont(size=14, weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
+        ctk.CTkLabel(typen_frame, text="Standard-Typen", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
 
         for i, tag in enumerate(config.WOCHENTAGE):
             self.default_typen_vars[tag] = tk.StringVar()
-            ctk.CTkLabel(typen_frame, text=f"{tag}:").grid(row=i + 1, column=0, padx=(15, 5), pady=8, sticky="w")
+            ctk.CTkLabel(typen_frame, text=f"{tag}:", font=self.main_font).grid(row=i + 1, column=0, padx=(15, 5), pady=8, sticky="w")
             combo = AccessibleCTkComboBox(
-                typen_frame, variable=self.default_typen_vars[tag], values=["Betrieb", "Schule"], width=120,
+                typen_frame, variable=self.default_typen_vars[tag], values=["Betrieb", "Schule"], width=120, font=self.main_font,
                 focus_color=config.FOCUS_COLOR, accessible_text=f"Standard-Typ für {tag}.",
                 status_callback=self.app.update_status, speak_callback=self.app.speak)
             combo.grid(row=i + 1, column=1, padx=(0, 15), pady=8, sticky="w")
@@ -87,13 +92,13 @@ class SettingsView(ctk.CTkFrame):
         stunden_frame = ctk.CTkFrame(defaults_frame, fg_color="transparent")
         stunden_frame.grid(row=0, column=1, padx=15, pady=10, sticky="ns")
         stunden_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(stunden_frame, text="Standard-Arbeitszeiten", font=ctk.CTkFont(size=14, weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
+        ctk.CTkLabel(stunden_frame, text="Standard-Arbeitszeiten", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
 
         for i, tag in enumerate(config.WOCHENTAGE):
             self.default_stunden_vars[tag] = tk.StringVar()
-            ctk.CTkLabel(stunden_frame, text=f"{tag}:").grid(row=i+1, column=0, padx=(15, 5), pady=8, sticky="w")
+            ctk.CTkLabel(stunden_frame, text=f"{tag}:", font=self.main_font).grid(row=i+1, column=0, padx=(15, 5), pady=8, sticky="w")
             entry = AccessibleCTkEntry(
-                stunden_frame, textvariable=self.default_stunden_vars[tag], width=100, focus_color=config.FOCUS_COLOR,
+                stunden_frame, textvariable=self.default_stunden_vars[tag], width=100, font=self.main_font, focus_color=config.FOCUS_COLOR,
                 accessible_text=f"Standard-Stunden für {tag} im Format HH:MM.",
                 status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='time')
             entry.grid(row=i+1, column=1, padx=(0, 15), pady=8, sticky="w")
@@ -102,14 +107,14 @@ class SettingsView(ctk.CTkFrame):
         format_frame = ctk.CTkFrame(settings_container)
         format_frame.pack(fill="x", padx=0, pady=5)
         format_frame.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(format_frame, text="Standard-Exportformat", font=ctk.CTkFont(size=14, weight="bold")).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
+        ctk.CTkLabel(format_frame, text="Standard-Exportformat", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
 
-        AccessibleCTkRadioButton(format_frame, text="DOCX", variable=self.default_format_var, value="docx",
+        AccessibleCTkRadioButton(format_frame, text="DOCX", variable=self.default_format_var, value="docx", font=self.main_font,
                                  fg_color=config.ACCENT_COLOR, focus_color=config.FOCUS_COLOR,
                                  accessible_text="Setzt DOCX als Standard-Ausgabeformat.",
                                  status_callback=self.app.update_status, speak_callback=self.app.speak).grid(row=1, column=0, padx=15, pady=8, sticky="w")
 
-        AccessibleCTkRadioButton(format_frame, text="PDF", variable=self.default_format_var, value="pdf",
+        AccessibleCTkRadioButton(format_frame, text="PDF", variable=self.default_format_var, value="pdf", font=self.main_font,
                                  fg_color=config.ACCENT_COLOR, focus_color=config.FOCUS_COLOR,
                                  accessible_text="Setzt PDF als Standard-Ausgabeformat.",
                                  status_callback=self.app.update_status, speak_callback=self.app.speak).grid(row=2, column=0, padx=15, pady=8, sticky="w")
@@ -120,7 +125,7 @@ class SettingsView(ctk.CTkFrame):
         
         AccessibleCTkButton(
             button_frame, text="Einstellungen speichern",
-            command=self._save_settings, font=ctk.CTkFont(weight="bold"), fg_color=config.ACCENT_COLOR,
+            command=self._save_settings, font=self.bold_font, fg_color=config.ACCENT_COLOR,
             hover_color=config.HOVER_COLOR, accessible_text="Speichert alle vorgenommenen Einstellungen.",
             status_callback=self.app.update_status, speak_callback=self.app.speak
         ).pack(anchor="e")

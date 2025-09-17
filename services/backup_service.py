@@ -65,11 +65,11 @@ class BackupService:
             self.data_manager.close()
             # --- KORREKTUR ENDE ---
 
-            # Aktuelle Daten sichern durch Umbenennen
+            # Aktuelle Daten sichern durch Verschieben
             if os.path.exists(config.DATA_ORDNER):
-                os.rename(config.DATA_ORDNER, data_old)
+                shutil.move(config.DATA_ORDNER, data_old)
             if os.path.exists(config.AUSGABE_ORDNER):
-                os.rename(config.AUSGABE_ORDNER, ausgabe_old)
+                shutil.move(config.AUSGABE_ORDNER, ausgabe_old)
 
             try:
                 with zipfile.ZipFile(zip_path, 'r') as zipf:
@@ -92,10 +92,10 @@ class BackupService:
                 logger.error(f"Fehler beim Extrahieren des Backups: {e}. Stelle alten Zustand wieder her.", exc_info=True)
                 if os.path.exists(data_old):
                     if os.path.exists(config.DATA_ORDNER): shutil.rmtree(config.DATA_ORDNER)
-                    os.rename(data_old, config.DATA_ORDNER)
+                    shutil.move(data_old, config.DATA_ORDNER)
                 if os.path.exists(ausgabe_old):
                     if os.path.exists(config.AUSGABE_ORDNER): shutil.rmtree(config.AUSGABE_ORDNER)
-                    os.rename(ausgabe_old, config.AUSGABE_ORDNER)
+                    shutil.move(ausgabe_old, config.AUSGABE_ORDNER)
                 return False, f"Fehler beim Import: {e}. Der vorherige Zustand wurde wiederhergestellt."
 
             finally:
@@ -107,4 +107,3 @@ class BackupService:
         except Exception as e:
             logger.error(f"Fehler beim Importieren der Daten aus '{zip_path}'.", exc_info=True)
             return False, f"Fehler beim Importieren der Daten: {e}"
-        

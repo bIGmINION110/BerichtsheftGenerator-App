@@ -27,8 +27,9 @@ class BerichtsheftView(ctk.CTkFrame):
         super().__init__(master, fg_color=config.FRAME_BG_COLOR)
         self.app = app_logic
 
-        self.main_font = ctk.CTkFont(family="Segoe UI", size=13)
-        self.bold_font = ctk.CTkFont(family="Segoe UI", size=14, weight="bold")
+        # --- VERBESSERUNG: Plattformunabhängige Schriftart verwenden ---
+        self.main_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=13)
+        self.bold_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=14, weight="bold")
         
         # UI Widgets
         self.tages_widgets: List[Dict[str, Any]] = []
@@ -105,7 +106,7 @@ class BerichtsheftView(ctk.CTkFrame):
         kalender_container.grid(row=2, column=1, columnspan=2, sticky="ew", padx=15, pady=8)
         
         if DateEntry:
-            self.kalender = DateEntry(kalender_container, width=12, date_pattern='dd.mm.y', font=("Segoe UI", 11))
+            self.kalender = DateEntry(kalender_container, width=12, date_pattern='dd.mm.y', font=(config.UI_FONT_FAMILY, 11))
             self.kalender.pack(side="left")
             self.kalender.bind("<<DateEntrySelected>>", self._update_kw_from_kalender)
             self.kalender.bind("<FocusIn>", lambda e: self.app.update_status("Kalender zur Auswahl des Berichtsdatums. Pfeiltasten Hoch/Runter ändern den Tag."))
@@ -202,7 +203,7 @@ class BerichtsheftView(ctk.CTkFrame):
                                  status_callback=self.app.update_status,
                                  speak_callback=self.app.speak).pack(side="left", padx=5)
         self.create_report_button = AccessibleCTkButton(action_frame, text="Erstellen (Strg+G)", command=self.app.erstelle_bericht, 
-                                                        font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"), height=35, 
+                                                        font=ctk.CTkFont(family=config.UI_FONT_FAMILY, size=13, weight="bold"), height=35, 
                                                         fg_color=config.ACCENT_COLOR, hover_color=config.HOVER_COLOR,
                                                         focus_color=config.FOCUS_COLOR,
                                                         accessible_text="Erstellt das Berichtsheft mit den eingegebenen Daten im ausgewählten Format.",
