@@ -61,6 +61,7 @@ class SettingsView(ctk.CTkFrame):
             accessible_text="Name des Auszubildenden. Wird für alle Berichte verwendet.",
             status_callback=self.app.update_status, speak_callback=self.app.speak)
         name_entry.grid(row=1, column=1, padx=(0, 15), pady=8, sticky="ew")
+        name_entry.configure(state="normal") # KORREKTUR: Feld bearbeitbar machen
 
         ctk.CTkLabel(persoenliche_daten_frame, text="Start der Ausbildung:", font=self.main_font).grid(row=2, column=0, padx=(15, 5), pady=8, sticky="w")
         start_entry = AccessibleCTkEntry(
@@ -68,6 +69,7 @@ class SettingsView(ctk.CTkFrame):
             accessible_text="Startdatum der Ausbildung im Format Tag.Monat.Jahr.",
             status_callback=self.app.update_status, speak_callback=self.app.speak)
         start_entry.grid(row=2, column=1, padx=(0, 15), pady=8, sticky="ew")
+        start_entry.configure(state="normal") # KORREKTUR: Feld bearbeitbar machen
 
 
         # --- Standard-Typen und Stunden in einem Frame ---

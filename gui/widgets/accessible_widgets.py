@@ -58,8 +58,7 @@ class AccessibleCTkEntry(ctk.CTkEntry, AccessibleBase):
         if self.navigation_mode:
             self.bind("<Up>", self._handle_arrow_navigation)
             self.bind("<Down>", self._handle_arrow_navigation)
-        
-        self.configure(state="readonly")
+            self.configure(state="readonly") # Nur bei Navigationsmodus auf readonly setzen
 
     def _handle_arrow_navigation(self, event: Any):
         """Verarbeitet die Pfeiltasten-Navigation basierend auf dem Modus."""
@@ -365,3 +364,4 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
 
     def _on_lose_focus_border(self, event: Any = None):
         self.configure(border_width=self._original_border_width, border_color=self._original_border_color)
+        
