@@ -7,6 +7,7 @@ Zentrale Konfigurationsdatei für Konstanten und Einstellungen.
 import os
 import sys
 from typing import List, Tuple
+import customtkinter as ctk
 
 # --- Anwendungsinformationen ---
 APP_NAME: str = "Berichtsheft-Generator"
@@ -41,17 +42,32 @@ ICON_DATEI: str = os.path.join(ASSETS_ORDNER, "icon.ico")
 # --- Kernlogik ---
 WOCHENTAGE: List[str] = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 
-# --- VERBESSERUNG: Plattformabhängige Schriftart für die GUI ---
+# --- GUI-Schriftarten und -Größen ---
 def get_ui_font() -> str:
     """Wählt die beste verfügbare Systemschriftart für die Benutzeroberfläche."""
     if sys.platform == "win32":
         return "Segoe UI"
     elif sys.platform == "darwin": # macOS
-        return "SF Display" # Moderne Apple-Schriftart, ansonsten Fallback auf Helvetica
+        return "SF Display"
     else: # Linux und andere
-        return "DejaVu Sans" # Eine der am weitesten verbreiteten, guten Linux-UI-Schriftarten
+        return "DejaVu Sans"
 
 UI_FONT_FAMILY = get_ui_font()
+
+# --- NEU: Schriftarten initial auf None setzen, um Ladefehler zu vermeiden ---
+FONT_NORMAL = None
+FONT_BOLD = None
+FONT_TITLE = None
+FONT_SIDEBAR = None
+
+def initialize_fonts():
+    """Initialisiert die globalen Schriftart-Objekte. Muss nach dem CTk-Hauptfenster aufgerufen werden."""
+    global FONT_NORMAL, FONT_BOLD, FONT_TITLE, FONT_SIDEBAR
+    FONT_NORMAL = ctk.CTkFont(family=UI_FONT_FAMILY, size=15)
+    FONT_BOLD = ctk.CTkFont(family=UI_FONT_FAMILY, size=16, weight="bold")
+    FONT_TITLE = ctk.CTkFont(family=UI_FONT_FAMILY, size=22, weight="bold")
+    FONT_SIDEBAR = ctk.CTkFont(family=UI_FONT_FAMILY, size=18)
+
 
 # --- GUI-Design ---
 # Ein modernes, blau-basiertes Farbschema
@@ -59,7 +75,6 @@ ACCENT_COLOR: str = "#3B82F6"  # Modernes Blau
 HOVER_COLOR: str = "#60A5FA"   # Helleres Blau für Hover-Effekte
 FRAME_BG_COLOR: Tuple[str, str] = ("#F1F5F9", "#1E293B") # Helles und dunkles Schiefergrau
 SIDEBAR_BG_COLOR: Tuple[str, str] = ("#FFFFFF", "#111827") # Weiß und sehr dunkles Grau
-SIDEBAR_BUTTON_FONT: Tuple[str, int] = (UI_FONT_FAMILY, 16) # Verwendet die neue Schriftart
 SIDEBAR_BUTTON_INACTIVE_COLOR: str = "transparent"
 ERROR_COLOR: str = "#EF4444"       # Kräftiges Rot
 ERROR_HOVER_COLOR: str = "#DC2626"  # Dunkleres Rot
@@ -71,3 +86,4 @@ DOCX_FONT_HEADLINE: str = 'Verdana'
 DOCX_FONT_BODY: str = 'Verdana'
 PDF_FONT_HEADLINE: Tuple[str, str] = ('Verdana', 'B')
 PDF_FONT_BODY: Tuple[str, str] = ('Verdana', '')
+

@@ -26,10 +26,6 @@ class BerichtsheftView(ctk.CTkFrame):
     def __init__(self, master, app_logic):
         super().__init__(master, fg_color=config.FRAME_BG_COLOR)
         self.app = app_logic
-
-        # --- VERBESSERUNG: Plattformunabhängige Schriftart verwenden ---
-        self.main_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=13)
-        self.bold_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=14, weight="bold")
         
         # UI Widgets
         self.tages_widgets: List[Dict[str, Any]] = []
@@ -69,44 +65,44 @@ class BerichtsheftView(ctk.CTkFrame):
         self.kopf_frame = ctk.CTkFrame(parent)
         
         self.kopf_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(self.kopf_frame, text="Persönliche Daten (Bitte in Einstellungen festlegen)", font=self.bold_font).grid(row=0, column=0, columnspan=2, pady=15, padx=15, sticky="w")
+        ctk.CTkLabel(self.kopf_frame, text="Persönliche Daten (Bitte in Einstellungen festlegen)", font=config.FONT_BOLD).grid(row=0, column=0, columnspan=2, pady=15, padx=15, sticky="w")
         
-        ctk.CTkLabel(self.kopf_frame, text="Name des Azubis:", font=self.main_font).grid(row=1, column=0, sticky="w", padx=15, pady=8)
-        name_entry = AccessibleCTkEntry(self.kopf_frame, textvariable=self.name_var, font=self.main_font, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für den Namen des Auszubildenden.", status_callback=self.app.update_status, speak_callback=self.app.speak)
-        name_entry.grid(row=1, column=1, sticky="ew", padx=15, pady=8)
+        ctk.CTkLabel(self.kopf_frame, text="Name des Azubis:", font=config.FONT_NORMAL).grid(row=1, column=0, sticky="w", padx=15, pady=10)
+        name_entry = AccessibleCTkEntry(self.kopf_frame, textvariable=self.name_var, font=config.FONT_NORMAL, height=35, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für den Namen des Auszubildenden.", status_callback=self.app.update_status, speak_callback=self.app.speak)
+        name_entry.grid(row=1, column=1, sticky="ew", padx=15, pady=10)
         
-        ctk.CTkLabel(self.kopf_frame, text="Start Ausbildung:", font=self.main_font).grid(row=2, column=0, sticky="w", padx=15, pady=8)
+        ctk.CTkLabel(self.kopf_frame, text="Start Ausbildung:", font=config.FONT_NORMAL).grid(row=2, column=0, sticky="w", padx=15, pady=10)
         self.start_entry = AccessibleCTkEntry(
-            self.kopf_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=self.main_font,
+            self.kopf_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=config.FONT_NORMAL, height=35,
             focus_color=config.FOCUS_COLOR, accessible_text="Startdatum der Ausbildung im Format Tag.Monat.Jahr.", 
             status_callback=self.app.update_status, speak_callback=self.app.speak)
-        self.start_entry.grid(row=2, column=1, sticky="ew", padx=15, pady=8)
+        self.start_entry.grid(row=2, column=1, sticky="ew", padx=15, pady=10)
         self.default_border_color = self.start_entry.cget("border_color")
         
         self.startdatum_var.trace_add("write", self._validate_start_date)
 
         settings_button = AccessibleCTkButton(self.kopf_frame, text="Zu den Einstellungen", command=lambda: self.app.show_view("settings"), 
-                                              font=self.main_font, focus_color=config.FOCUS_COLOR,
+                                              font=config.FONT_NORMAL, height=35, focus_color=config.FOCUS_COLOR,
                                               accessible_text="Öffnet die Einstellungen, um Name und Startdatum festzulegen.",
                                               status_callback=self.app.update_status, speak_callback=self.app.speak)
-        settings_button.grid(row=3, column=1, padx=15, pady=10, sticky="e")
+        settings_button.grid(row=3, column=1, padx=15, pady=15, sticky="e")
 
 
     def _create_wochendaten_widgets(self, parent):
         woche_frame = ctk.CTkFrame(parent)
         woche_frame.grid(row=0, column=1, padx=(10, 0), pady=10, sticky="nsew")
         woche_frame.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(woche_frame, text="Berichtsdaten", font=self.bold_font).grid(row=0, column=0, columnspan=3, pady=15, padx=15, sticky="w")
-        ctk.CTkLabel(woche_frame, text="Bericht Nr.:", font=self.main_font).grid(row=1, column=0, sticky="w", padx=15, pady=8)
-        nummer_entry = AccessibleCTkEntry(woche_frame, textvariable=self.nummer_var, font=self.main_font, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für die fortlaufende Berichtsnummer. Pfeiltasten Hoch/Runter ändern den Wert.", status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='numeric')
-        nummer_entry.grid(row=1, column=1, columnspan=2, sticky="ew", padx=15, pady=8)
-        ctk.CTkLabel(woche_frame, text="Woche wählen:", font=self.main_font).grid(row=2, column=0, sticky="w", padx=15, pady=8)
+        ctk.CTkLabel(woche_frame, text="Berichtsdaten", font=config.FONT_BOLD).grid(row=0, column=0, columnspan=3, pady=15, padx=15, sticky="w")
+        ctk.CTkLabel(woche_frame, text="Bericht Nr.:", font=config.FONT_NORMAL).grid(row=1, column=0, sticky="w", padx=15, pady=10)
+        nummer_entry = AccessibleCTkEntry(woche_frame, textvariable=self.nummer_var, font=config.FONT_NORMAL, height=35, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für die fortlaufende Berichtsnummer. Pfeiltasten Hoch/Runter ändern den Wert.", status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='numeric')
+        nummer_entry.grid(row=1, column=1, columnspan=2, sticky="ew", padx=15, pady=10)
+        ctk.CTkLabel(woche_frame, text="Woche wählen:", font=config.FONT_NORMAL).grid(row=2, column=0, sticky="w", padx=15, pady=10)
         
         kalender_container = ctk.CTkFrame(woche_frame, fg_color="transparent")
-        kalender_container.grid(row=2, column=1, columnspan=2, sticky="ew", padx=15, pady=8)
+        kalender_container.grid(row=2, column=1, columnspan=2, sticky="ew", padx=15, pady=10)
         
         if DateEntry:
-            self.kalender = DateEntry(kalender_container, width=12, date_pattern='dd.mm.y', font=(config.UI_FONT_FAMILY, 11))
+            self.kalender = DateEntry(kalender_container, width=12, date_pattern='dd.mm.y', font=(config.UI_FONT_FAMILY, 14))
             self.kalender.pack(side="left")
             self.kalender.bind("<<DateEntrySelected>>", self._update_kw_from_kalender)
             self.kalender.bind("<FocusIn>", lambda e: self.app.update_status("Kalender zur Auswahl des Berichtsdatums. Pfeiltasten Hoch/Runter ändern den Tag."))
@@ -115,15 +111,15 @@ class BerichtsheftView(ctk.CTkFrame):
         else:
             ctk.CTkLabel(kalender_container, text="tkcalendar fehlt!", text_color="orange").pack(side="left")
 
-        ctk.CTkLabel(kalender_container, text="KW:", font=self.main_font).pack(side="left", padx=(10, 2))
-        self.kw_entry = AccessibleCTkEntry(kalender_container, textvariable=self.kw_var, width=40, font=self.main_font,
+        ctk.CTkLabel(kalender_container, text="KW:", font=config.FONT_NORMAL).pack(side="left", padx=(15, 5))
+        self.kw_entry = AccessibleCTkEntry(kalender_container, textvariable=self.kw_var, width=50, font=config.FONT_NORMAL, height=35,
                                            focus_color=config.FOCUS_COLOR,
                                            accessible_text="Manuelle Eingabe der Kalenderwoche. Pfeiltasten Hoch/Runter ändern den Wert.",
                                            status_callback=self.app.update_status,
                                            speak_callback=self.app.speak, navigation_mode='numeric')
         self.kw_entry.pack(side="left")
-        ctk.CTkLabel(kalender_container, text="Jahr:", font=self.main_font).pack(side="left", padx=(10, 2))
-        self.jahr_entry = AccessibleCTkEntry(kalender_container, textvariable=self.jahr_var, width=60, font=self.main_font,
+        ctk.CTkLabel(kalender_container, text="Jahr:", font=config.FONT_NORMAL).pack(side="left", padx=(15, 5))
+        self.jahr_entry = AccessibleCTkEntry(kalender_container, textvariable=self.jahr_var, width=70, font=config.FONT_NORMAL, height=35,
                                              focus_color=config.FOCUS_COLOR,
                                              accessible_text="Manuelle Eingabe des Jahres. Pfeiltasten Hoch/Runter ändern den Wert.",
                                              status_callback=self.app.update_status,
@@ -142,18 +138,18 @@ class BerichtsheftView(ctk.CTkFrame):
             tab.grid_rowconfigure(1, weight=1)
             header_frame = ctk.CTkFrame(tab, fg_color="transparent")
             header_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-            ctk.CTkLabel(header_frame, text="Typ:", font=self.main_font).pack(side="left", padx=(5, 5))
+            ctk.CTkLabel(header_frame, text="Typ:", font=config.FONT_NORMAL).pack(side="left", padx=(5, 5))
             typ_var = tk.StringVar(value="Betrieb")
             typ_combo = AccessibleCTkComboBox(header_frame, variable=typ_var, values=["Betrieb", "Schule", "Urlaub", "Krank", "Feiertag"], 
-                                              width=120, font=self.main_font,
+                                              width=140, font=config.FONT_NORMAL, height=35,
                                               focus_color=config.FOCUS_COLOR,
                                               accessible_text=f"Auswahl des Tätigkeitstyps für {tag_name}.",
                                               status_callback=self.app.update_status,
                                               speak_callback=self.app.speak)
-            typ_combo.pack(side="left", padx=(0, 20))
-            ctk.CTkLabel(header_frame, text="Stunden:", font=self.main_font).pack(side="left", padx=(5, 5))
+            typ_combo.pack(side="left", padx=(0, 25))
+            ctk.CTkLabel(header_frame, text="Stunden:", font=config.FONT_NORMAL).pack(side="left", padx=(5, 5))
             stunden_var = tk.StringVar()
-            stunden_entry = AccessibleCTkEntry(master=header_frame, textvariable=stunden_var, width=70, font=self.main_font, 
+            stunden_entry = AccessibleCTkEntry(master=header_frame, textvariable=stunden_var, width=80, font=config.FONT_NORMAL, height=35,
                                                focus_color=config.FOCUS_COLOR,
                                                accessible_text=f"Eingabefeld für die Stundenanzahl am {tag_name}. Pfeiltasten Hoch/Runter ändern die Zeit um 15 Minuten.", 
                                                status_callback=self.app.update_status,
@@ -171,9 +167,9 @@ class BerichtsheftView(ctk.CTkFrame):
 
             taetigkeiten_text = AccessibleCTkTextbox(
                 tab, 
-                font=self.main_font, 
+                font=config.FONT_NORMAL, 
                 wrap="word", 
-                corner_radius=6, 
+                corner_radius=8, 
                 border_width=1,
                 focus_color=config.FOCUS_COLOR,
                 accessible_text=f"Tätigkeiten für {tag_name}. Pfeiltasten hoch/runter lesen die aktuelle Zeile.",
@@ -189,21 +185,21 @@ class BerichtsheftView(ctk.CTkFrame):
         action_frame.grid_columnconfigure(0, weight=1)
         format_frame = ctk.CTkFrame(action_frame, fg_color="transparent")
         format_frame.pack(side="left", padx=10, pady=5)
-        ctk.CTkLabel(format_frame, text="Format:", font=self.main_font).pack(side="left")
-        AccessibleCTkRadioButton(format_frame, text="DOCX", variable=self.format_var, value="docx", font=self.main_font, 
+        ctk.CTkLabel(format_frame, text="Format:", font=config.FONT_NORMAL).pack(side="left")
+        AccessibleCTkRadioButton(format_frame, text="DOCX", variable=self.format_var, value="docx", font=config.FONT_NORMAL, 
                                  fg_color=config.ACCENT_COLOR,
                                  focus_color=config.FOCUS_COLOR,
                                  accessible_text="Wählt DOCX als Ausgabeformat für den Bericht.",
                                  status_callback=self.app.update_status,
-                                 speak_callback=self.app.speak).pack(side="left", padx=5)
-        AccessibleCTkRadioButton(format_frame, text="PDF", variable=self.format_var, value="pdf", font=self.main_font, 
+                                 speak_callback=self.app.speak).pack(side="left", padx=10)
+        AccessibleCTkRadioButton(format_frame, text="PDF", variable=self.format_var, value="pdf", font=config.FONT_NORMAL, 
                                  fg_color=config.ACCENT_COLOR,
                                  focus_color=config.FOCUS_COLOR,
                                  accessible_text="Wählt PDF als Ausgabeformat für den Bericht.",
                                  status_callback=self.app.update_status,
-                                 speak_callback=self.app.speak).pack(side="left", padx=5)
+                                 speak_callback=self.app.speak).pack(side="left", padx=10)
         self.create_report_button = AccessibleCTkButton(action_frame, text="Erstellen (Strg+G)", command=self.app.erstelle_bericht, 
-                                                        font=ctk.CTkFont(family=config.UI_FONT_FAMILY, size=13, weight="bold"), height=35, 
+                                                        font=config.FONT_BOLD, height=40, 
                                                         fg_color=config.ACCENT_COLOR, hover_color=config.HOVER_COLOR,
                                                         focus_color=config.FOCUS_COLOR,
                                                         accessible_text="Erstellt das Berichtsheft mit den eingegebenen Daten im ausgewählten Format.",

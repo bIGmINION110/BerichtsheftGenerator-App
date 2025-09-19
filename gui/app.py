@@ -56,6 +56,9 @@ class BerichtsheftApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
         
+        # --- KORREKTUR: Schriftarten initialisieren, nachdem das Hauptfenster existiert ---
+        config.initialize_fonts()
+
         self.data_manager = DataManager()
         self.controller = AppController(self.data_manager)
         self.logic = BerichtsheftLogik()
@@ -114,8 +117,14 @@ class BerichtsheftApp(ctk.CTk):
     def _setup_window(self) -> None:
         """Konfiguriert das Hauptfenster."""
         self.title(f"{config.APP_NAME} {config.VERSION}")
-        self.geometry("1400x900")
-        self.minsize(1100, 750)
+        
+        # --- NEU: Anwendung im Vollbildmodus starten ---
+        if sys.platform == "win32":
+            self.state('zoomed')
+        else:
+            self.attributes('-zoomed', True)
+            
+        self.minsize(1200, 800)
         
         # --- VERBESSERUNG: Plattformabhängiges Icon-Handling ---
         # .ico wird nur unter Windows zuverlässig unterstützt.
@@ -133,29 +142,27 @@ class BerichtsheftApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.status_bar_frame = ctk.CTkFrame(self, height=25, corner_radius=0)
+        self.status_bar_frame = ctk.CTkFrame(self, height=30, corner_radius=0)
         self.status_bar_frame.grid(row=1, column=0, columnspan=2, sticky="sew")
-        self.status_bar = ctk.CTkLabel(self.status_bar_frame, text="", anchor="w")
+        self.status_bar = ctk.CTkLabel(self.status_bar_frame, text="", anchor="w", font=config.FONT_NORMAL)
         self.status_bar.pack(side="left", padx=10, pady=2)
         self.progress_bar = ctk.CTkProgressBar(self.status_bar_frame, indeterminate_speed=1.2)
         
-        self.sidebar_frame = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color=config.SIDEBAR_BG_COLOR)
+        self.sidebar_frame = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color=config.SIDEBAR_BG_COLOR)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsw")
         self.sidebar_frame.grid_rowconfigure(8, weight=1)
         self._create_sidebar_widgets()
 
         self.view_container = ctk.CTkFrame(self, fg_color=config.FRAME_BG_COLOR)
-        self.view_container.grid(row=0, column=1, sticky="nsew", padx=15, pady=15)
+        self.view_container.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         self.view_container.grid_columnconfigure(0, weight=1)
         self.view_container.grid_rowconfigure(0, weight=1)
 
     def _create_sidebar_widgets(self) -> None:
         """Füllt die Seitenleiste mit Logo, Titel und Navigations-Buttons."""
         if Image and os.path.exists(config.LOGO_DATEI):
-            self.logo_image = ctk.CTkImage(Image.open(config.LOGO_DATEI), size=(30, 30))
-            ctk.CTkLabel(self.sidebar_frame, image=self.logo_image, text=config.APP_NAME, font=ctk.CTkFont(size=20, weight="bold"), compound="left", padx=15).grid(row=0, column=0, padx=20, pady=20)
-
-        button_font = ctk.CTkFont(family=config.SIDEBAR_BUTTON_FONT[0], size=config.SIDEBAR_BUTTON_FONT[1])
+            self.logo_image = ctk.CTkImage(Image.open(config.LOGO_DATEI), size=(35, 35))
+            ctk.CTkLabel(self.sidebar_frame, image=self.logo_image, text=config.APP_NAME, font=ctk.CTkFont(size=24, weight="bold"), compound="left", padx=20).grid(row=0, column=0, padx=20, pady=25)
         
         buttons_to_create = {
             "berichtsheft": ("Berichtsheft (Strg+1)", "Öffnet die Ansicht zum Erstellen und Bearbeiten von Berichten"),
@@ -170,22 +177,25 @@ class BerichtsheftApp(ctk.CTk):
 
         for i, (view_name, (text, acc_text)) in enumerate(buttons_to_create.items()):
             button = AccessibleCTkButton(self.sidebar_frame, text=text, command=lambda v=view_name: self.show_view(v), 
-                                         anchor="w", font=button_font, fg_color=config.SIDEBAR_BUTTON_INACTIVE_COLOR, 
+                                         anchor="w", font=config.FONT_SIDEBAR, fg_color=config.SIDEBAR_BUTTON_INACTIVE_COLOR, 
                                          hover_color=config.HOVER_COLOR,
                                          focus_color=config.FOCUS_COLOR,
+                                         height=40,
                                          accessible_text=acc_text, status_callback=self.update_status, speak_callback=self.speak)
-            button.grid(row=i + 1, column=0, padx=20, pady=10, sticky="ew")
+            button.grid(row=i + 1, column=0, padx=20, pady=12, sticky="ew")
             self.sidebar_buttons[view_name] = button
         
         bottom_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
         bottom_frame.grid(row=8, column=0, padx=20, pady=20, sticky="s")
         
         AccessibleCTkButton(bottom_frame, text="Ordner öffnen", command=self._open_output_folder,
+                              font=config.FONT_NORMAL,
                               focus_color=config.FOCUS_COLOR,
                               accessible_text="Öffnet den Ordner mit den erstellten Berichten", 
                               status_callback=self.update_status, speak_callback=self.speak).pack(pady=10)
         
         AccessibleCTkSwitch(bottom_frame, text="Light Mode", command=self._toggle_theme,
+                            font=config.FONT_NORMAL,
                             accessible_text="Schaltet zwischen hellem und dunklem Design um",
                             status_callback=self.update_status, speak_callback=self.speak).pack()
 
@@ -459,3 +469,4 @@ class BerichtsheftApp(ctk.CTk):
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
+
