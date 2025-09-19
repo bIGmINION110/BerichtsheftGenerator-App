@@ -119,10 +119,15 @@ class BerichtsheftApp(ctk.CTk):
         self.title(f"{config.APP_NAME} {config.VERSION}")
         
         # --- NEU: Anwendung im Vollbildmodus starten ---
-        if sys.platform == "win32":
-            self.state('zoomed')
-        else:
-            self.attributes('-zoomed', True)
+        try:
+            if sys.platform == "win32":
+                self.state('zoomed')
+            elif sys.platform == "darwin": # macOS
+                self.wm_attributes("-zoomed", True)
+            else: # Linux
+                self.attributes('-zoomed', True)
+        except tk.TclError:
+            logger.warning("Konnte Fenster nicht maximieren ('zoomed' state not supported).")
             
         self.minsize(1200, 800)
         
