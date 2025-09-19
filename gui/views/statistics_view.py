@@ -33,7 +33,6 @@ class StatisticsView(ctk.CTkFrame):
         self.app = app_logic
         self.data_manager = app_logic.data_manager
         
-        self.pie_chart_canvas = None
         self.bar_chart_canvas = None
 
         # --- VERBESSERUNG: Schriftart für Matplotlib plattformunabhängig festlegen ---
@@ -98,9 +97,8 @@ class StatisticsView(ctk.CTkFrame):
         self.summary_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         self.summary_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        self.pie_chart_frame = ctk.CTkFrame(self)
+        self.pie_chart_frame = ctk.CTkScrollableFrame(self)
         self.pie_chart_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
-        self.pie_chart_frame.grid_rowconfigure(0, weight=1)
         self.pie_chart_frame.grid_columnconfigure(0, weight=1)
 
         self.bar_chart_frame = ctk.CTkFrame(self)
@@ -133,9 +131,6 @@ class StatisticsView(ctk.CTkFrame):
         self.matplotlib_error_label.grid_forget()
         for widget in self.summary_frame.winfo_children():
             widget.destroy()
-        if self.pie_chart_canvas:
-            self.pie_chart_canvas.get_tk_widget().destroy()
-            self.pie_chart_canvas = None
         if self.bar_chart_canvas:
             self.bar_chart_canvas.get_tk_widget().destroy()
             self.bar_chart_canvas = None
@@ -155,10 +150,11 @@ class StatisticsView(ctk.CTkFrame):
         total_reports = len(berichte)
         total_hours = 0
         stunden_pro_typ = defaultdict(float)
-        tage_pro_typ = defaultdict(int)
+        tage_pro_typ_pro_jahr = defaultdict(lambda: defaultdict(int))
         jahres_stunden = defaultdict(float)
         
         for bericht in berichte.values():
+            jahr_str = str(bericht.get("jahr", "Unbekannt"))
             for tag in bericht.get("tage_daten", []):
                 stunden_str = tag.get("stunden", "0:0")
                 typ = tag.get("typ", "Unbekannt")
@@ -166,22 +162,30 @@ class StatisticsView(ctk.CTkFrame):
                 dezimal_stunden = self.app.logic.parse_time_to_decimal(stunden_str)
                 total_hours += dezimal_stunden
                 stunden_pro_typ[typ] += dezimal_stunden
-                tage_pro_typ[typ] += 1
+                tage_pro_typ_pro_jahr[jahr_str][typ] += 1
                 
                 if bericht.get("jahr"):
                     jahres_stunden[str(bericht.get("jahr"))] += dezimal_stunden
 
-        self._update_summary_labels(total_reports, total_hours, stunden_pro_typ, tage_pro_typ)
+        total_tage_pro_typ = defaultdict(int)
+        for jahr_daten in tage_pro_typ_pro_jahr.values():
+            for typ, anzahl in jahr_daten.items():
+                total_tage_pro_typ[typ] += anzahl
+
+        self._update_summary_labels(total_reports, total_hours, stunden_pro_typ, total_tage_pro_typ)
         
         if MATPLOTLIB_AVAILABLE:
-            if sum(tage_pro_typ.values()) > 0:
-                try:
-                    self._create_pie_chart(tage_pro_typ, "Tageverteilung nach Typ")
-                except Exception:
-                    logging.error("Fehler beim Erstellen des Kuchendiagramms.", exc_info=True)
-                    ctk.CTkLabel(self.pie_chart_frame, text="Fehler beim Erstellen des Diagramms.").pack()
+            if tage_pro_typ_pro_jahr:
+                for jahr, data in sorted(tage_pro_typ_pro_jahr.items()):
+                    if sum(data.values()) > 0:
+                        try:
+                            self._create_pie_chart(data, f"Tageverteilung für {jahr}")
+                        except Exception:
+                            logging.error("Fehler beim Erstellen des Kuchendiagramms.", exc_info=True)
+                            ctk.CTkLabel(self.pie_chart_frame, text=f"Fehler beim Erstellen des Diagramms für {jahr}.").pack()
             else:
                 ctk.CTkLabel(self.pie_chart_frame, text="Keine Tage für Diagramm.").pack(expand=True)
+
 
             if jahres_stunden and sum(jahres_stunden.values()) > 0:
                 try:
@@ -210,8 +214,13 @@ class StatisticsView(ctk.CTkFrame):
 
 
     def _create_pie_chart(self, data: Dict, title: str):
-        """Erstellt und rendert ein Kuchendiagramm."""
+        """Erstellt und rendert ein Kuchendiagramm in einem eigenen Frame im Scroll-Bereich."""
         colors = self._get_theme_colors()
+        
+        chart_container = ctk.CTkFrame(self.pie_chart_frame)
+        chart_container.pack(pady=10, padx=10, fill="x", expand=True)
+        chart_container.grid_columnconfigure(0, weight=1)
+        chart_container.grid_rowconfigure(0, weight=1)
         
         filtered_data = {label: size for label, size in data.items() if size > 0}
         labels = filtered_data.keys()
@@ -225,13 +234,13 @@ class StatisticsView(ctk.CTkFrame):
         ax.axis('equal')
         ax.set_title(title, color=colors["text"])
         
-        self.pie_chart_canvas = FigureCanvasTkAgg(fig, master=self.pie_chart_frame)
-        self.pie_chart_canvas.draw()
-        self.pie_chart_canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+        canvas = FigureCanvasTkAgg(fig, master=chart_container)
+        canvas.draw()
+        canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
         
         # Textliche Zusammenfassung für Barrierefreiheit
-        summary_text = "Zusammenfassung Kuchendiagramm: " + ", ".join([f"{label}: {size} Tage" for label, size in filtered_data.items()])
-        summary_label = ctk.CTkLabel(self.pie_chart_frame, text=summary_text, wraplength=400, justify="center")
+        summary_text = f"Zusammenfassung {title}: " + ", ".join([f"{label}: {size} Tage" for label, size in filtered_data.items()])
+        summary_label = ctk.CTkLabel(chart_container, text=summary_text, wraplength=400, justify="center")
         summary_label.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
         
         plt.close(fig)

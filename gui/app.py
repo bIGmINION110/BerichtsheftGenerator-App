@@ -89,7 +89,12 @@ class BerichtsheftApp(ctk.CTk):
         
         try:
             # Versucht, den ersten verfügbaren und aktiven Screenreader zu finden.
-            speaker = outputs.auto.Auto()
+            try:
+                speaker = outputs.nvda.NVDA()
+                speaker == outputs.jaws.Jaws()
+            except NameError as e:
+                logging.info(e + " konnte nicht gefnden werden!")
+                
             if speaker.is_active():
                 logging.info(f"Aktiver Screenreader '{speaker.name}' erkannt. Sprachausgabe wird aktiviert.")
                 return speaker
@@ -314,7 +319,8 @@ class BerichtsheftApp(ctk.CTk):
                     taetigkeiten = "-"
                 tage_daten.append({"typ": typ, "stunden": widgets["stunden"].get(), "taetigkeiten": taetigkeiten})
             context["tage_daten"] = tage_daten
-            context["erstellungsdatum_bericht"] = date.today().strftime("%d.%m.%Y")
+            # --- ÄNDERUNG: Das Datum für die Unterschrift ist immer der Freitag der Woche. ---
+            context["erstellungsdatum_bericht"] = context["zeitraum_bis"]
             return context
         except (ValueError, TypeError) as e:
             messagebox.showerror("Eingabefehler", str(e))
