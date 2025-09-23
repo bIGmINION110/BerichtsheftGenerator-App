@@ -63,10 +63,10 @@ FONT_SIDEBAR = None
 def initialize_fonts():
     """Initialisiert die globalen Schriftart-Objekte. Muss nach dem CTk-Hauptfenster aufgerufen werden."""
     global FONT_NORMAL, FONT_BOLD, FONT_TITLE, FONT_SIDEBAR
-    FONT_NORMAL = ctk.CTkFont(family=UI_FONT_FAMILY, size=15)
-    FONT_BOLD = ctk.CTkFont(family=UI_FONT_FAMILY, size=16, weight="bold")
-    FONT_TITLE = ctk.CTkFont(family=UI_FONT_FAMILY, size=22, weight="bold")
-    FONT_SIDEBAR = ctk.CTkFont(family=UI_FONT_FAMILY, size=18)
+    FONT_NORMAL = ctk.CTkFont(family=UI_FONT_FAMILY, size=24)
+    FONT_BOLD = ctk.CTkFont(family=UI_FONT_FAMILY, size=26, weight="bold")
+    FONT_TITLE = ctk.CTkFont(family=UI_FONT_FAMILY, size=40, weight="bold")
+    FONT_SIDEBAR = ctk.CTkFont(family=UI_FONT_FAMILY, size=24)
 
 
 # --- GUI-Design ---
