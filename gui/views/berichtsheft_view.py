@@ -263,16 +263,20 @@ class BerichtsheftView(ctk.CTkFrame):
             self.kw_var.set(str(kw))
             self.jahr_var.set(str(jahr))
 
-        for i, tag_data in enumerate(report_data.get("tage_daten", [])):
-            if i < len(self.tages_widgets):
-                widgets = self.tages_widgets[i]
+        # Erstelle ein Mapping von Wochentag zu den Widgets
+        widgets_by_day = {tag_name: self.tages_widgets[i] for i, tag_name in enumerate(config.WOCHENTAGE)}
+
+        for tag_data in report_data.get("tage_daten", []):
+            tag_name = tag_data.get("tag_name")
+            if tag_name in widgets_by_day:
+                widgets = widgets_by_day[tag_name]
                 widgets["typ"].set(tag_data.get("typ", "Betrieb"))
                 widgets["stunden"].set(tag_data.get("stunden", "00:00"))
                 widgets["taetigkeiten"].delete("1.0", "end")
                 widgets["taetigkeiten"].insert("1.0", tag_data.get("taetigkeiten", ""))
         self.app.update_status(f"Bericht Nr. {self.nummer_var.get()} geladen.")
         self.app.speak(f"Bericht für Kalenderwoche {kw}, Jahr {jahr} geladen.")
-        self.app.show_view("berichtsheft")
+
 
     def _update_kw_from_kalender(self, event: Any = None):
         if not self.kalender: return

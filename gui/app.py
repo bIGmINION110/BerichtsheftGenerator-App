@@ -212,7 +212,7 @@ class BerichtsheftApp(ctk.CTk):
             "settings": SettingsView(self.view_container, self),
         }
         
-    def show_view(self, view_name: str) -> None:
+    def show_view(self, view_name: str, run_on_show: bool = True) -> None:
         """Blendet die aktuelle Ansicht aus und zeigt die ausgewählte an."""
         for name, button in self.sidebar_buttons.items():
             button.configure(fg_color=config.ACCENT_COLOR if name == view_name else config.SIDEBAR_BUTTON_INACTIVE_COLOR)
@@ -222,13 +222,14 @@ class BerichtsheftApp(ctk.CTk):
         
         view_to_show = self.views.get(view_name)
         if view_to_show:
-            if hasattr(view_to_show, 'on_show'):
+            if hasattr(view_to_show, 'on_show') and run_on_show:
                 view_to_show.on_show()
             
             view_to_show.grid(row=0, column=0, sticky="nsew")
             readable_name = view_name.replace('_', ' ').title()
             self.update_status(f"Ansicht '{readable_name}' geladen.")
-            self.speak(f"Ansicht {readable_name}")
+            if run_on_show:
+                self.speak(f"Ansicht {readable_name}")
         else:
             self.update_status(f"Fehler: Ansicht '{view_name}' nicht gefunden.")
             logger.error(f"Versuch, eine nicht existierende Ansicht anzuzeigen: {view_name}")
@@ -469,4 +470,3 @@ class BerichtsheftApp(ctk.CTk):
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
-

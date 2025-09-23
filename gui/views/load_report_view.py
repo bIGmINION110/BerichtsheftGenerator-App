@@ -140,6 +140,7 @@ class LoadReportView(ctk.CTkFrame):
         """Ruft die Methode in der Haupt-App auf, um die Daten in die GUI zu laden."""
         logger.info(f"Bericht Nr. {report_data.get('fortlaufende_nr', '?')} wird in die GUI geladen.")
         self.app.get_berichtsheft_view_reference().load_report_data_into_ui(report_data)
+        self.app.show_view("berichtsheft", run_on_show=False)
         
     def _delete_report(self, report_id: str):
         """Löscht einen Bericht aus der Datenbank."""
