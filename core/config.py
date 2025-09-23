@@ -67,8 +67,7 @@ def initialize_fonts():
     FONT_BOLD = ctk.CTkFont(family=UI_FONT_FAMILY, size=26, weight="bold")
     FONT_TITLE = ctk.CTkFont(family=UI_FONT_FAMILY, size=40, weight="bold")
     FONT_SIDEBAR = ctk.CTkFont(family=UI_FONT_FAMILY, size=24)
-
-
+    
 # --- GUI-Design ---
 # Ein modernes, blau-basiertes Farbschema
 ACCENT_COLOR: str = "#3B82F6"  # Modernes Blau
