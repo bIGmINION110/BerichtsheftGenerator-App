@@ -13,7 +13,7 @@ from core.data_manager import DataManager
 from generators.docx_generator import DocxGenerator
 from generators.pdf_generator import PdfGenerator
 from services.backup_service import BackupService
-from services.importer_service import ImporterService # NEUER IMPORT
+from services.importer_service import ImporterService
 
 # Logger für dieses Modul initialisieren
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class AppController:
         """
         self.data_manager = data_manager
         self.backup_service = BackupService(self.data_manager) # DataManager übergeben
-        self.importer_service = ImporterService() # NEUER SERVICE
+        self.importer_service = ImporterService()
         logger.info("AppController wurde initialisiert.")
 
     def erstelle_bericht(self, context: Dict[str, Any], format: str) -> Tuple[bool, str]:
@@ -117,7 +117,7 @@ class AppController:
         logger.info(f"Starte Datenimport von: {zip_path}")
         return self.backup_service.import_all_data_from_zip(zip_path)
         
-    def import_docx_berichte(self, file_paths: List[str]) -> Tuple[int, int]:
+    def import_docx_berichte(self, file_paths: List[str]) -> Tuple[int, int, bool]:
         """
         Importiert Berichtsdaten aus einer Liste von DOCX-Dateien.
 
@@ -125,7 +125,7 @@ class AppController:
             file_paths: Eine Liste von Pfaden zu den DOCX-Dateien.
 
         Returns:
-            Ein Tupel (erfolgreich_importiert, fehlerhaft).
+            Ein Tupel (erfolgreich_importiert, fehlerhaft, erfolg_speichern).
         """
         logger.info(f"Starte DOCX-Import für {len(file_paths)} Dateien.")
         
@@ -145,11 +145,13 @@ class AppController:
             else:
                 fehlerhaft += 1
         
+        erfolg_speichern = False
         if importierte_daten:
             logger.info(f"Speichere {len(importierte_daten)} importierte Berichte.")
-            self.data_manager.importiere_berichte(importierte_daten)
+            erfolg_speichern = self.data_manager.importiere_berichte(importierte_daten)
         
-        return erfolgreich, fehlerhaft
+        return erfolgreich, fehlerhaft, erfolg_speichern
+
 
     def delete_bericht(self, bericht_id: str) -> bool:
         """Löscht einen Bericht aus der Datenbank."""

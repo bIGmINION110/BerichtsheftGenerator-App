@@ -8,17 +8,11 @@ Diese Datei initialisiert das Logging und startet die grafische Benutzeroberflä
 import sys
 import os
 import logging
+import tkinter as tk
+from tkinter import messagebox
 
-# Stellt sicher, dass die übergeordneten Verzeichnisse im Python-Pfad sind,
-# damit Module wie 'core' und 'gui' korrekt importiert werden können.
-# Dieser Block ist wichtig, wenn das Skript direkt ausgeführt wird.
-try:
-    # Dieser Pfad-Trick ist nützlich für die Entwicklung.
-    # Für eine gebaute Anwendung (z.B. mit PyInstaller) ist er oft nicht nötig.
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-except Exception:
-    # Falls __file__ nicht definiert ist (seltene Fälle), fahre ohne Pfadänderung fort
-    pass
+# KORREKTUR: Die problematische sys.path-Anweisung wurde entfernt.
+# Das Skript sollte aus dem Hauptverzeichnis (berichtsheftgenerator-app) ausgeführt werden.
 
 from core.logger_config import setup_logging
 from gui.app import BerichtsheftApp
@@ -27,26 +21,29 @@ def main() -> None:
     """
     Hauptfunktion: Konfiguriert das Logging und startet die Anwendung.
     """
-    # Das Logging muss als Allererstes initialisiert werden,
-    # damit alle nachfolgenden Ereignisse (auch Fehler beim Start)
-    # erfasst werden können.
-    setup_logging()
-    
-    logging.info("Anwendung wird gestartet.")
-
-    # Die Hauptanwendung (GUI) wird erstellt und gestartet.
     try:
+        # Das Logging muss als Allererstes initialisiert werden.
+        setup_logging()
+        logging.info("Anwendung wird gestartet.")
+
+        # Die Hauptanwendung (GUI) wird erstellt und gestartet.
         app = BerichtsheftApp()
         app.mainloop()
+
     except Exception as e:
         # Fängt alle unerwarteten Fehler beim Start der GUI ab
         logging.critical("Ein schwerwiegender Fehler hat die Anwendung beendet.", exc_info=True)
-        # Optional: Zeige dem Benutzer eine einfache Fehlermeldung an
-        # import tkinter as tk
-        # from tkinter import messagebox
-        # root = tk.Tk()
-        # root.withdraw()
-        # messagebox.showerror("Fatal Error", f"Ein unerwarteter Fehler ist aufgetreten: {e}\nDie Anwendung wird beendet. Bitte prüfen Sie die Log-Dateien.")
+        
+        # Zeigt dem Benutzer eine einfache Fehlermeldung an.
+        # Dies ist wichtig, falls das Logging selbst fehlschlägt.
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror(
+            "Fataler Fehler",
+            f"Ein unerwarteter Fehler ist aufgetreten: {e}\n\n"
+            "Die Anwendung wird beendet. Bitte prüfen Sie die Log-Dateien im 'logs'-Ordner."
+        )
+        sys.exit(1) # Beendet das Programm mit einem Fehlercode
 
     logging.info("Anwendung wurde normal beendet.")
 

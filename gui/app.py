@@ -29,6 +29,7 @@ except ImportError:
 
 
 from core import config
+from db.database import Database
 from core.data_manager import DataManager
 from core.controller import AppController
 from core.logic import BerichtsheftLogik
@@ -59,7 +60,13 @@ class BerichtsheftApp(ctk.CTk):
         # --- KORREKTUR: Schriftarten initialisieren, nachdem das Hauptfenster existiert ---
         config.initialize_fonts()
 
-        self.data_manager = DataManager()
+        # --- NEU: Saubere DB-Initialisierung ---
+        migrations_path = os.path.join(config.BASE_DIR, "migrations")
+        self.db = Database(config.DATENBANK_DATEI, migrations_path)
+        self.db.connect()
+        self.db.run_migrations()
+
+        self.data_manager = DataManager(self.db)
         self.controller = AppController(self.data_manager)
         self.logic = BerichtsheftLogik()
         
@@ -81,6 +88,12 @@ class BerichtsheftApp(ctk.CTk):
         self.after(1500, self._start_update_check)
         
         logger.info("GUI erfolgreich initialisiert.")
+
+    def on_close(self) -> None:
+        """Sicherstellen, dass die DB-Verbindung beim Beenden geschlossen wird."""
+        logger.info("Anwendung wird beendet. Schließe Datenbankverbindung.")
+        self.db.close()
+        self.destroy()
 
     def _initialize_speaker(self) -> Optional[Any]:
         """
@@ -140,7 +153,7 @@ class BerichtsheftApp(ctk.CTk):
                 logger.warning("Konnte .ico-Datei nicht laden. Überspringe.")
 
         ctk.set_appearance_mode("dark")
-        self.protocol("WM_DELETE_WINDOW", self.quit)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def _create_main_layout(self) -> None:
         """Erstellt das grundlegende Layout mit Seitenleiste und Inhaltsbereich."""

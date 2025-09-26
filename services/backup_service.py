@@ -62,7 +62,7 @@ class BackupService:
 
             # --- KORREKTUR START ---
             # Datenbankverbindung schließen, um Sperre aufzuheben
-            self.data_manager.close()
+            self.data_manager.close_db_connection()
             # --- KORREKTUR ENDE ---
 
             # Aktuelle Daten sichern durch Verschieben
@@ -101,7 +101,7 @@ class BackupService:
             finally:
                 # --- KORREKTUR START ---
                 # Datenbankverbindung wiederherstellen, egal was passiert
-                self.data_manager.connect()
+                self.data_manager.connect_db_connection()
                 # --- KORREKTUR ENDE ---
 
         except Exception as e:

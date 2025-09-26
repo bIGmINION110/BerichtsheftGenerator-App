@@ -29,6 +29,7 @@ setuptools==80.9.0
 six==1.17.0
 tkcalendar==1.6.1
 typing_extensions==4.15.0
+pytest==8.2.2 # Hinzugefügt für Tests
 
 # ==========================================================
 # Betriebssystem-spezifische Bibliotheken

@@ -15,15 +15,19 @@ VERSION: str = "17.5.0"
 GITHUB_REPO_URL: str = "https://api.github.com/repos/bigminion110/berichtsheftgenerator-app/releases/latest"
 
 # --- Verzeichnisse und Dateipfade ---
+# KORREKTUR: Robuste Pfad-Ermittlung für Entwicklung und PyInstaller (.exe)
 if getattr(sys, 'frozen', False):
-    BASE_DIR: str = os.path.dirname(sys.executable)
+    # Wenn die Anwendung "eingefroren" ist (als .exe läuft),
+    # ist der Basispfad der temporäre Ordner von PyInstaller.
+    BASE_DIR: str = sys._MEIPASS
 else:
+    # Im Entwicklungsmodus ist es das übergeordnete Verzeichnis von 'core'.
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DATA_ORDNER: str = os.path.join(BASE_DIR, "data")
-AUSGABE_ORDNER: str = os.path.join(BASE_DIR, "Ausbildungsnachweise")
+AUSGABE_ORDNER: str = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else BASE_DIR, "Ausbildungsnachweise")
 ASSETS_ORDNER: str = os.path.join(BASE_DIR, "assets")
-LOG_ORDNER: str = os.path.join(BASE_DIR, "logs")
+LOG_ORDNER: str = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else BASE_DIR, "logs")
 FONTS_ORDNER: str = os.path.join(ASSETS_ORDNER, "fonts")
 
 # --- Datenbank ---
@@ -85,4 +89,3 @@ DOCX_FONT_HEADLINE: str = 'Verdana'
 DOCX_FONT_BODY: str = 'Verdana'
 PDF_FONT_HEADLINE: Tuple[str, str] = ('Verdana', 'B')
 PDF_FONT_BODY: Tuple[str, str] = ('Verdana', '')
-

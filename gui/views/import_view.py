@@ -7,7 +7,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import logging
 from ..widgets.accessible_widgets import AccessibleCTkButton
-from core import config # NEUER IMPORT
+from core import config
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,6 @@ class ImportView(ctk.CTkFrame):
         self.app = app_logic
         self.controller = app_logic.controller
         
-        # --- VERBESSERUNG: Plattformunabhängige Schriftart verwenden ---
         self.title_font = ctk.CTkFont(family=config.UI_FONT_FAMILY, size=16, weight="bold")
         
         self._create_widgets()
@@ -85,19 +84,25 @@ class ImportView(ctk.CTkFrame):
 
         self._log_to_view(f"{len(file_paths)} Datei(en) ausgewählt. Starte Import...")
         
-        # Den Controller aufrufen, um den Import im Hintergrund durchzuführen
-        success_count, failure_count = self.controller.import_docx_berichte(file_paths)
+        # KORREKTUR: Das Tupel mit 3 Werten korrekt entpacken
+        success_count, failure_count, save_success = self.controller.import_docx_berichte(file_paths)
         
         self._log_to_view("\n--- Import abgeschlossen ---")
-        self._log_to_view(f"Erfolgreich importiert: {success_count}")
+        self._log_to_view(f"Erfolgreich eingelesen: {success_count}")
         self._log_to_view(f"Fehlgeschlagen/Übersprungen: {failure_count}")
 
-        if success_count > 0:
+        if success_count > 0 and save_success:
+            self._log_to_view("Datenbank erfolgreich aktualisiert.")
             messagebox.showinfo("Import abgeschlossen", 
-                                f"{success_count} Bericht(e) wurden erfolgreich importiert.\n"
+                                f"{success_count} Bericht(e) wurden erfolgreich importiert und gespeichert.\n"
                                 "Die Daten sind jetzt in der Statistik und unter 'Bericht laden' verfügbar.")
-            self.app.reload_all_data() # Wichtig, um die anderen Ansichten zu aktualisieren
-        elif failure_count > 0:
+            self.app.reload_all_data()
+        elif success_count > 0 and not save_success:
+            self._log_to_view("FEHLER: Die eingelesenen Daten konnten nicht in der Datenbank gespeichert werden.")
+            messagebox.showerror("Fehler beim Speichern",
+                                 "Die Berichte wurden zwar eingelesen, konnten aber nicht in der Datenbank gespeichert werden. "
+                                 "Bitte prüfen Sie die Log-Dateien.")
+        elif failure_count > 0 and success_count == 0:
             messagebox.showwarning("Import abgeschlossen",
                                    "Es konnten keine Berichte importiert werden. "
                                    "Stellen Sie sicher, dass die Dateien dem erwarteten Format entsprechen.")

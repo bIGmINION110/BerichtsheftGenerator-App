@@ -2,349 +2,198 @@
 # -*- coding: utf-8 -*-
 """
 Modul zur zentralen Verwaltung aller Lese- und Schreibvorgänge für Daten mittels SQLite.
+Diese Klasse agiert als Fassade und Repository für die Datenbank.
 """
-
 import json
-import os
 import logging
-import sqlite3
 from typing import Dict, Any, List, Optional
 
-from core import config
+from db.database import Database
+from db.models import Bericht, Tagebucheintrag, Vorlage
 
 logger = logging.getLogger(__name__)
 
 class DataManager:
-    """
-    Verwaltet das Laden und Speichern von Konfigurations-, Berichts- und Vorlagendaten in einer SQLite-Datenbank.
-    """
-    def __init__(self):
-        """Initialisiert den DataManager, stellt die Ordner sicher und richtet die Datenbank ein."""
-        try:
-            os.makedirs(config.DATA_ORDNER, exist_ok=True)
-            os.makedirs(config.AUSGABE_ORDNER, exist_ok=True)
-        except OSError as e:
-            logger.critical(f"Kritischer Fehler: Daten- oder Ausgabeordner konnte nicht erstellt werden. {e}", exc_info=True)
-            raise
+    """Verwaltet alle CRUD-Operationen (Create, Read, Update, Delete) für die Anwendung."""
 
-        self._conn = None  # Wichtig: initial auf None setzen
-        self.connect()     # Verbindung über neue Methode herstellen
+    def __init__(self, db: Database):
+        """
+        Initialisiert den DataManager mit einer Datenbankinstanz.
 
-    def connect(self):
-        """Stellt die Datenbankverbindung her."""
-        if self._conn is None:
-            self._conn = self._create_connection()
-            self._create_tables()
-            self._migrate_from_json()
-
-    def close(self):
-        """Schließt die Datenbankverbindung sicher."""
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-            logger.info("Datenbankverbindung geschlossen.")
-
-    def _create_connection(self) -> Optional[sqlite3.Connection]:
-        """Erstellt eine Verbindung zur SQLite-Datenbank."""
-        try:
-            conn = sqlite3.connect(config.DATENBANK_DATEI)
-            conn.row_factory = sqlite3.Row
-            return conn
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Verbinden mit der Datenbank: {e}", exc_info=True)
-            return None
-
-    def _create_tables(self):
-        """Erstellt die notwendigen Tabellen in der Datenbank, falls sie nicht existieren."""
-        if not self._conn:
-            return
-
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS konfiguration (
-                    schluessel TEXT PRIMARY KEY,
-                    wert TEXT
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS berichte (
-                    bericht_id TEXT PRIMARY KEY,
-                    fortlaufende_nr INTEGER,
-                    name_azubi TEXT,
-                    jahr INTEGER,
-                    kalenderwoche INTEGER
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tagebucheintraege (
-                    eintrag_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    bericht_id TEXT,
-                    tag_name TEXT,
-                    typ TEXT,
-                    stunden TEXT,
-                    taetigkeiten TEXT,
-                    FOREIGN KEY (bericht_id) REFERENCES berichte (bericht_id)
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS vorlagen (
-                    vorlage_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    text TEXT NOT NULL UNIQUE
-                )
-            """)
-            self._conn.commit()
-            logger.info("Datenbank-Tabellen erfolgreich überprüft/erstellt.")
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Erstellen der Tabellen: {e}", exc_info=True)
-
-    def _migrate_from_json(self):
-        """Migriert Daten aus alten JSON-Dateien in die Datenbank und löscht die JSON-Dateien."""
-        if os.path.exists(config.KONFIG_DATEI_OLD):
-            logger.info("Alte Konfigurations-JSON gefunden. Starte Migration...")
-            try:
-                with open(config.KONFIG_DATEI_OLD, 'r', encoding='utf-8') as f:
-                    konfig_data = json.load(f)
-
-                # Speichere die Konfiguration
-                self.speichere_konfiguration(konfig_data)
-                
-                os.remove(config.KONFIG_DATEI_OLD)
-                logger.info("Konfigurations-JSON erfolgreich migriert und gelöscht.")
-            except Exception as e:
-                logger.error(f"Fehler bei der Migration der Konfigurations-JSON: {e}", exc_info=True)
-
-        if os.path.exists(config.BERICHTS_DATEI_OLD):
-            logger.info("Alte Berichts-JSON gefunden. Starte Migration...")
-            try:
-                with open(config.BERICHTS_DATEI_OLD, 'r', encoding='utf-8') as f:
-                    berichts_data = json.load(f)
-                
-                # Importiere die Berichte
-                self.importiere_berichte(berichts_data)
-
-                os.remove(config.BERICHTS_DATEI_OLD)
-                logger.info("Berichts-JSON erfolgreich migriert und gelöscht.")
-            except Exception as e:
-                logger.error(f"Fehler bei der Migration der Berichts-JSON: {e}", exc_info=True)
-        
-        if os.path.exists(config.VORLAGEN_DATEI_OLD):
-            logger.info("Alte Vorlagen-JSON gefunden. Starte Migration...")
-            try:
-                with open(config.VORLAGEN_DATEI_OLD, 'r', encoding='utf-8') as f:
-                    vorlagen_data = json.load(f)
-                
-                self.speichere_vorlagen(vorlagen_data)
-
-                os.remove(config.VORLAGEN_DATEI_OLD)
-                logger.info("Vorlagen-JSON erfolgreich migriert und gelöscht.")
-            except Exception as e:
-                logger.error(f"Fehler bei der Migration der Vorlagen-JSON: {e}", exc_info=True)
-
+        Args:
+            db: Eine Instanz der Database-Klasse.
+        """
+        self.db = db
 
     def lade_konfiguration(self) -> Dict[str, Any]:
-        """Lädt die Hauptkonfiguration aus der Datenbank."""
-        self.connect()
-        if not self._conn:
+        """Lädt die gesamte Konfiguration aus der Datenbank."""
+        config_data = {}
+        query = "SELECT schluessel, wert FROM konfiguration"
+        try:
+            with self.db.transaction() as cursor:
+                for row in cursor.execute(query):
+                    # Versuche, JSON-Werte zu parsen
+                    try:
+                        config_data[row['schluessel']] = json.loads(row['wert'])
+                    except (json.JSONDecodeError, TypeError):
+                        config_data[row['schluessel']] = row['wert']
+            return config_data
+        except self.db._conn.Error as e:
+            logger.error(f"Fehler beim Laden der Konfiguration: {e}", exc_info=True)
             return {}
+
+    def speichere_konfiguration(self, config_data: Dict[str, Any]) -> bool:
+        """Speichert die Konfiguration in der Datenbank (UPSERT)."""
+        query = "INSERT OR REPLACE INTO konfiguration (schluessel, wert) VALUES (?, ?)"
+        try:
+            with self.db.transaction() as cursor:
+                for key, value in config_data.items():
+                    # Komplexe Typen (dict, list) als JSON-String speichern
+                    if isinstance(value, (dict, list)):
+                        cursor.execute(query, (key, json.dumps(value)))
+                    else:
+                        cursor.execute(query, (key, value))
+            return True
+        except self.db._conn.Error as e:
+            logger.error(f"Fehler beim Speichern der Konfiguration: {e}", exc_info=True)
+            return False
+
+    def lade_berichte(self) -> Dict[str, Dict[str, Any]]:
+        """Lädt alle Berichte und die zugehörigen Tagebucheinträge."""
+        berichte_query = "SELECT * FROM berichte"
+        eintraege_query = "SELECT * FROM tagebucheintraege WHERE bericht_id = ?"
+        berichte_map = {}
+        try:
+            with self.db.transaction() as cursor:
+                # Zuerst alle Berichte laden
+                for row in cursor.execute(berichte_query):
+                    bericht = dict(row)
+                    bericht['tage_daten'] = []
+                    berichte_map[bericht['bericht_id']] = bericht
+                
+                # Dann für jeden Bericht die Einträge hinzufügen
+                for bericht_id, bericht_data in berichte_map.items():
+                    for entry_row in cursor.execute(eintraege_query, (bericht_id,)):
+                        bericht_data['tage_daten'].append(dict(entry_row))
+            return berichte_map
+        except self.db._conn.Error as e:
+            logger.error(f"Fehler beim Laden der Berichte: {e}", exc_info=True)
+            return {}
+
+    def aktualisiere_bericht(self, context: Dict[str, Any]) -> bool:
+        """Aktualisiert oder erstellt einen Bericht und seine Einträge in einer einzigen Transaktion."""
+        try:
+            with self.db.transaction() as cursor:
+                self._aktualisiere_bericht_in_transaktion(cursor, context)
+            return True
+        except self.db._conn.Error as e:
+            bericht_id = f"{context.get('jahr', 'Ubekannt')}-{context.get('kalenderwoche', 'Ubekannt'):02d}"
+            logger.error(f"Fehler beim Aktualisieren des Berichts '{bericht_id}': {e}", exc_info=True)
+            return False
+
+    def _aktualisiere_bericht_in_transaktion(self, cursor: Any, context: Dict[str, Any]):
+        """
+        Führt die Logik zum Aktualisieren eines Berichts innerhalb einer bestehenden Transaktion aus.
+        Wird von `aktualisiere_bericht` und `importiere_berichte` genutzt.
+        """
+        # KORREKTUR: Stellt sicher, dass die Kalenderwoche ein Integer ist für die Formatierung.
+        kw = int(context['kalenderwoche'])
+        bericht_id = f"{context['jahr']}-{kw:02d}"
+
+        upsert_bericht = """
+            INSERT OR REPLACE INTO berichte (bericht_id, fortlaufende_nr, name_azubi, jahr, kalenderwoche)
+            VALUES (?, ?, ?, ?, ?)
+        """
+        delete_eintraege = "DELETE FROM tagebucheintraege WHERE bericht_id = ?"
+        insert_eintrag = """
+            INSERT INTO tagebucheintraege (bericht_id, tag_name, typ, stunden, taetigkeiten)
+            VALUES (?, ?, ?, ?, ?)
+        """
         
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute("SELECT schluessel, wert FROM konfiguration")
-            rows = cursor.fetchall()
-            
-            config_dict = {}
-            for row in rows:
-                try:
-                    # Versuche, den Wert als JSON zu laden (für verschachtelte Diktate wie 'einstellungen')
-                    config_dict[row['schluessel']] = json.loads(row['wert'])
-                except (json.JSONDecodeError, TypeError):
-                    # Wenn es kein JSON ist, speichere es als einfachen String/Zahl
-                    config_dict[row['schluessel']] = row['wert']
-            return config_dict
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Laden der Konfiguration aus der DB: {e}", exc_info=True)
-            return {}
+        # Bericht aktualisieren/einfügen
+        cursor.execute(upsert_bericht, (
+            bericht_id, context['fortlaufende_nr'], context['name_azubi'],
+            context['jahr'], kw
+        ))
+        
+        # Alte Einträge für diesen Bericht löschen
+        cursor.execute(delete_eintraege, (bericht_id,))
+        
+        # Neue Einträge einfügen
+        from core.config import WOCHENTAGE
+        for i, tag_daten in enumerate(context['tage_daten']):
+            if i < len(WOCHENTAGE):
+                cursor.execute(insert_eintrag, (
+                    bericht_id, WOCHENTAGE[i], tag_daten.get('typ', '-'),
+                    tag_daten.get('stunden', '0:00'), tag_daten.get('taetigkeiten', '-')
+                ))
 
-    def speichere_konfiguration(self, daten: Dict[str, Any]) -> bool:
-        """Speichert die Hauptkonfiguration in der Datenbank."""
-        self.connect()
-        if not self._conn:
-            return False
-
-        try:
-            cursor = self._conn.cursor()
-            for key, value in daten.items():
-                # Komplexe Typen (dict, list) als JSON-String speichern
-                if isinstance(value, (dict, list)):
-                    value_str = json.dumps(value, ensure_ascii=False)
-                else:
-                    value_str = str(value)
-                
-                cursor.execute(
-                    "INSERT OR REPLACE INTO konfiguration (schluessel, wert) VALUES (?, ?)",
-                    (key, value_str)
-                )
-            self._conn.commit()
-            return True
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Speichern der Konfiguration in die DB: {e}", exc_info=True)
-            return False
-
-    def lade_berichte(self) -> Dict[str, Any]:
-        """Lädt alle gespeicherten Berichtsdaten aus der Datenbank."""
-        self.connect()
-        if not self._conn:
-            return {}
-
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute("""
-                SELECT
-                    b.bericht_id, b.fortlaufende_nr, b.name_azubi, b.jahr, b.kalenderwoche,
-                    t.tag_name, t.typ, t.stunden, t.taetigkeiten
-                FROM berichte b
-                LEFT JOIN tagebucheintraege t ON b.bericht_id = t.bericht_id
-                ORDER BY b.bericht_id, t.eintrag_id
-            """)
-            
-            berichte = {}
-            for row in cursor.fetchall():
-                bericht_id = row['bericht_id']
-                if bericht_id not in berichte:
-                    berichte[bericht_id] = {
-                        "fortlaufende_nr": row['fortlaufende_nr'],
-                        "name_azubi": row['name_azubi'],
-                        "jahr": row['jahr'],
-                        "kalenderwoche": row['kalenderwoche'],
-                        "tage_daten": []
-                    }
-                
-                if row['tag_name']: # Stellt sicher, dass Tagebucheinträge existieren
-                    berichte[bericht_id]['tage_daten'].append({
-                        "tag_name": row['tag_name'],
-                        "typ": row['typ'],
-                        "stunden": row['stunden'],
-                        "taetigkeiten": row['taetigkeiten']
-                    })
-            return berichte
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Laden der Berichte aus der DB: {e}", exc_info=True)
-            return {}
-
-    def aktualisiere_bericht(self, bericht_daten: Dict[str, Any]) -> bool:
-        """Fügt einen neuen Bericht hinzu oder aktualisiert einen bestehenden in der Datenbank."""
-        self.connect()
-        if not self._conn:
-            return False
-
-        bericht_id = f"{bericht_daten['jahr']}-{int(bericht_daten['kalenderwoche']):02d}"
-        try:
-            cursor = self._conn.cursor()
-
-            # Zuerst den Hauptbericht einfügen oder ersetzen
-            cursor.execute(
-                "INSERT OR REPLACE INTO berichte (bericht_id, fortlaufende_nr, name_azubi, jahr, kalenderwoche) VALUES (?, ?, ?, ?, ?)",
-                (bericht_id, bericht_daten['fortlaufende_nr'], bericht_daten['name_azubi'], bericht_daten['jahr'], bericht_daten['kalenderwoche'])
-            )
-
-            # Alte Tageseinträge für diesen Bericht löschen
-            cursor.execute("DELETE FROM tagebucheintraege WHERE bericht_id = ?", (bericht_id,))
-            
-            # Neue Tageseinträge einfügen
-            for i, tag_data in enumerate(bericht_daten.get('tage_daten', [])):
-                cursor.execute(
-                    "INSERT INTO tagebucheintraege (bericht_id, tag_name, typ, stunden, taetigkeiten) VALUES (?, ?, ?, ?, ?)",
-                    (bericht_id, config.WOCHENTAGE[i], tag_data['typ'], tag_data['stunden'], tag_data['taetigkeiten'])
-                )
-            
-            self._conn.commit()
-            return True
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Aktualisieren des Berichts in der DB: {e}", exc_info=True)
-            self._conn.rollback()
-            return False
-            
-    def importiere_berichte(self, importierte_daten: Dict[str, Any]) -> bool:
-        """Fügt eine Sammlung von importierten Berichten zu den bestehenden Daten hinzu."""
-        self.connect()
-        if not self._conn:
-            return False
-            
-        try:
-            for bericht_id, bericht_daten in importierte_daten.items():
-                self.aktualisiere_bericht(bericht_daten)
-            return True
-        except Exception as e:
-            logger.error(f"Fehler beim Massenimport von Berichten: {e}", exc_info=True)
-            return False
-
-
-    def loesche_statistiken(self) -> bool:
-        """Löscht alle Berichte und Tageseinträge aus der Datenbank."""
-        self.connect()
-        if not self._conn:
-            return False
-
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute("DELETE FROM tagebucheintraege")
-            cursor.execute("DELETE FROM berichte")
-            self._conn.commit()
-            logger.info("Alle Berichtsdaten (Statistiken) wurden aus der Datenbank gelöscht.")
-            return True
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Löschen der Statistiken aus der DB: {e}", exc_info=True)
-            self._conn.rollback()
-            return False
-            
-    def lade_vorlagen(self) -> List[str]:
-        """Lädt die Textvorlagen aus der Datenbank."""
-        self.connect()
-        if not self._conn:
-            return []
-            
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute("SELECT text FROM vorlagen ORDER BY vorlage_id")
-            return [row['text'] for row in cursor.fetchall()]
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Laden der Vorlagen aus der DB: {e}", exc_info=True)
-            return []
-
-    def speichere_vorlagen(self, vorlagen_liste: List[str]) -> bool:
-        """Speichert die Textvorlagen in der Datenbank (löscht alte und fügt neue ein)."""
-        self.connect()
-        if not self._conn:
-            return False
-            
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute("DELETE FROM vorlagen")
-            cursor.executemany(
-                "INSERT INTO vorlagen (text) VALUES (?)",
-                [(vorlage,) for vorlage in vorlagen_liste]
-            )
-            self._conn.commit()
-            return True
-        except sqlite3.Error as e:
-            logger.error(f"Fehler beim Speichern der Vorlagen in die DB: {e}", exc_info=True)
-            self._conn.rollback()
-            return False
 
     def loesche_bericht(self, bericht_id: str) -> bool:
-        """Löscht einen einzelnen Bericht und die zugehörigen Tageseinträge."""
-        self.connect()
-        if not self._conn:
-            return False
+        """Löscht einen Bericht und seine Einträge (dank ON DELETE CASCADE)."""
+        query = "DELETE FROM berichte WHERE bericht_id = ?"
         try:
-            cursor = self._conn.cursor()
-            cursor.execute("DELETE FROM tagebucheintraege WHERE bericht_id = ?", (bericht_id,))
-            cursor.execute("DELETE FROM berichte WHERE bericht_id = ?", (bericht_id,))
-            self._conn.commit()
-            logger.info(f"Bericht mit ID '{bericht_id}' wurde gelöscht.")
+            with self.db.transaction() as cursor:
+                cursor.execute(query, (bericht_id,))
             return True
-        except sqlite3.Error as e:
+        except self.db._conn.Error as e:
             logger.error(f"Fehler beim Löschen des Berichts '{bericht_id}': {e}", exc_info=True)
-            self._conn.rollback()
             return False
+
+    def lade_vorlagen(self) -> List[str]:
+        """Lädt alle Textvorlagen."""
+        query = "SELECT text FROM vorlagen ORDER BY text"
+        try:
+            with self.db.transaction() as cursor:
+                return [row['text'] for row in cursor.execute(query)]
+        except self.db._conn.Error as e:
+            logger.error(f"Fehler beim Laden der Vorlagen: {e}", exc_info=True)
+            return []
+
+    def speichere_vorlagen(self, vorlagen: List[str]) -> bool:
+        """Löscht alle alten Vorlagen und speichert die neue Liste."""
+        delete_query = "DELETE FROM vorlagen"
+        insert_query = "INSERT INTO vorlagen (text) VALUES (?)"
+        try:
+            with self.db.transaction() as cursor:
+                cursor.execute(delete_query)
+                cursor.executemany(insert_query, [(v,) for v in vorlagen])
+            return True
+        except self.db._conn.Error as e:
+            logger.error(f"Fehler beim Speichern der Vorlagen: {e}", exc_info=True)
+            return False
+            
+    def loesche_statistiken(self) -> bool:
+        """Löscht alle Berichte und Tagebucheinträge aus der Datenbank."""
+        try:
+            with self.db.transaction() as cursor:
+                cursor.execute("DELETE FROM tagebucheintraege;")
+                cursor.execute("DELETE FROM berichte;")
+            logger.info("Alle Berichtsdaten für Statistiken wurden zurückgesetzt.")
+            return True
+        except self.db._conn.Error as e:
+            logger.error(f"Fehler beim Zurücksetzen der Statistiken: {e}", exc_info=True)
+            return False
+            
+    def importiere_berichte(self, berichte_daten: Dict[str, Any]) -> bool:
+        """
+        Importiert mehrere Berichte in einer einzigen, performanten Transaktion.
+        Gibt bei einem Fehler `False` zurück, damit der Controller den Fehler anzeigen kann.
+        """
+        try:
+            with self.db.transaction() as cursor:
+                for bericht_id, context in berichte_daten.items():
+                    self._aktualisiere_bericht_in_transaktion(cursor, context)
+            logger.info(f"{len(berichte_daten)} Berichte erfolgreich importiert.")
+            return True
+        except self.db._conn.Error as e:
+            logger.error(f"Fehler beim Massenimport von Berichten: {e}", exc_info=True)
+            return False # Wichtig: Signalisiert dem Controller einen Fehler
+            
+    def close_db_connection(self):
+        """Delegiert das Schließen der DB-Verbindung."""
+        self.db.close()
+
+    def connect_db_connection(self):
+        """Delegiert das Öffnen der DB-Verbindung."""
+        self.db.connect()
