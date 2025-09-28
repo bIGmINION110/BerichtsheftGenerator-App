@@ -58,6 +58,10 @@ class BaseGenerator(ABC):
             self._create_footer()
             
             voller_pfad = os.path.join(config.AUSGABE_ORDNER, dateiname)
+            
+            # --- KORREKTUR: Sicherstellen, dass der Ausgabeordner existiert ---
+            os.makedirs(os.path.dirname(voller_pfad), exist_ok=True)
+            
             self._save_document(voller_pfad)
         except Exception as e:
             logger.error(f"Fehler beim Generieren des Dokuments '{dateiname}'.", exc_info=True)

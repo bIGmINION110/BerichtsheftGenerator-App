@@ -47,18 +47,13 @@ class AppController:
         """
         logger.info(f"Anfrage zur Erstellung eines Berichts im Format '{format}' erhalten.")
         try:
-            # 1. Daten anreichern und validieren
-            logic = BerichtsheftLogik()
-            start_datum_kw = date.fromisocalendar(context["jahr"], context["kalenderwoche"], 1)
-            ausbildungsjahr = logic.berechne_ausbildungsjahr(
-                context["startdatum_ausbildung_dt"], start_datum_kw
-            )
-            context["ausbildungsjahr"] = ausbildungsjahr
-            logger.debug(f"Ausbildungsjahr berechnet: {ausbildungsjahr}")
-
+            # 1. Daten anreichern und validieren (wird bereits in sammle_daten erledigt)
+            # Hier wird angenommen, dass 'context' bereits alle nötigen Daten enthält.
+            
             # 2. Dateinamen generieren
+            logic = BerichtsheftLogik()
             dateiname_basis = logic.generiere_dateinamen(
-                ausbildungsjahr=ausbildungsjahr,
+                ausbildungsjahr=context["ausbildungsjahr"],
                 kw=context["kalenderwoche"],
                 jahr=context["jahr"],
                 name_azubi=context["name_azubi"],
@@ -71,16 +66,8 @@ class AppController:
             generator = DocxGenerator(context) if format == "docx" else PdfGenerator(context)
             generator.generate(dateiname)
 
-            # 4. Statistik und Konfiguration aktualisieren
-            self.data_manager.aktualisiere_bericht(context)
-            logger.info(f"Berichtsdaten für KW {context['kalenderwoche']}/{context['jahr']} gespeichert.")
-
-            neue_konfig_daten = {
-                "letzte_bericht_nummer": context["fortlaufende_nr"],
-                "letzte_bericht_kw": context["kalenderwoche"],
-                "letzte_bericht_jahr": context["jahr"]
-            }
-            self._aktualisiere_konfiguration(neue_konfig_daten)
+            # 4. Daten in der Datenbank speichern (wird jetzt separat gehandhabt)
+            self.speichere_bericht_daten(context)
 
             return True, f"Bericht '{dateiname}' erfolgreich erstellt!"
 
@@ -95,6 +82,26 @@ class AppController:
             logger.error("Allgemeiner Fehler bei der Erstellung des Berichts.", exc_info=True)
             # Dem Benutzer nur eine einfache Nachricht geben
             return False, "Ein unerwarteter Fehler ist aufgetreten. Details in der Log-Datei."
+
+    def speichere_bericht_daten(self, context: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Speichert die aktuellen Berichtsdaten in der Datenbank, ohne eine Datei zu generieren.
+        """
+        try:
+            self.data_manager.aktualisiere_bericht(context)
+            logger.info(f"Berichtsdaten für KW {context['kalenderwoche']}/{context['jahr']} gespeichert.")
+
+            neue_konfig_daten = {
+                "letzte_bericht_nummer": context["fortlaufende_nr"],
+                "letzte_bericht_kw": context["kalenderwoche"],
+                "letzte_bericht_jahr": context["jahr"]
+            }
+            self._aktualisiere_konfiguration(neue_konfig_daten)
+
+            return True, f"Bericht Nr. {context['fortlaufende_nr']} (KW {context['kalenderwoche']}) erfolgreich gespeichert!"
+        except Exception as e:
+            logger.error("Allgemeiner Fehler beim Speichern der Berichtsdaten.", exc_info=True)
+            return False, "Ein Fehler ist beim Speichern aufgetreten. Details in der Log-Datei."
 
 
     def _aktualisiere_konfiguration(self, updates: Dict[str, Any]) -> None:

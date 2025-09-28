@@ -35,7 +35,7 @@ from core.controller import AppController
 from core.logic import BerichtsheftLogik
 
 from gui.views.berichtsheft_view import BerichtsheftView
-from gui.views.dashboard_view import DashboardView
+# from gui.views.dashboard_view import DashboardView # ENTFERNT
 from gui.views.load_report_view import LoadReportView
 from gui.views.template_view import TemplateView
 from gui.views.statistics_view import StatisticsView
@@ -57,10 +57,8 @@ class BerichtsheftApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
         
-        # --- KORREKTUR: Schriftarten initialisieren, nachdem das Hauptfenster existiert ---
         config.initialize_fonts()
 
-        # --- NEU: Saubere DB-Initialisierung ---
         migrations_path = os.path.join(config.BASE_DIR, "migrations")
         self.db = Database(config.DATENBANK_DATEI, migrations_path)
         self.db.connect()
@@ -104,7 +102,6 @@ class BerichtsheftApp(ctk.CTk):
             return None
         
         try:
-            # Versucht, den ersten verfügbaren und aktiven Screenreader zu finden.
             try:
                 speaker = outputs.nvda.NVDA()
                 speaker == outputs.jaws.Jaws()
@@ -131,21 +128,18 @@ class BerichtsheftApp(ctk.CTk):
         """Konfiguriert das Hauptfenster."""
         self.title(f"{config.APP_NAME} {config.VERSION}")
         
-        # --- NEU: Anwendung im Vollbildmodus starten ---
         try:
             if sys.platform == "win32":
                 self.state('zoomed')
-            elif sys.platform == "darwin": # macOS
+            elif sys.platform == "darwin":
                 self.wm_attributes("-zoomed", True)
-            else: # Linux
+            else:
                 self.attributes('-zoomed', True)
         except tk.TclError:
             logger.warning("Konnte Fenster nicht maximieren ('zoomed' state not supported).")
             
         self.minsize(1200, 800)
         
-        # --- VERBESSERUNG: Plattformabhängiges Icon-Handling ---
-        # .ico wird nur unter Windows zuverlässig unterstützt.
         if sys.platform == "win32" and os.path.exists(config.ICON_DATEI):
             try:
                 self.iconbitmap(config.ICON_DATEI)
@@ -182,15 +176,15 @@ class BerichtsheftApp(ctk.CTk):
             self.logo_image = ctk.CTkImage(Image.open(config.LOGO_DATEI), size=(35, 35))
             ctk.CTkLabel(self.sidebar_frame, image=self.logo_image, text=config.APP_NAME, font=ctk.CTkFont(size=24, weight="bold"), compound="left", padx=20).grid(row=0, column=0, padx=20, pady=25)
         
+        # --- KORREKTUR: Dashboard entfernt ---
         buttons_to_create = {
             "berichtsheft": ("Berichtsheft (Strg+1)", "Öffnet die Ansicht zum Erstellen und Bearbeiten von Berichten"),
-            "dashboard": ("Dashboard (Strg+2)", "Zeigt eine Zusammenfassung der aktuellen Woche"),
-            "load_report": ("Bericht laden (Strg+3)", "Öffnet die Ansicht zum Laden eines gespeicherten Berichts"),
-            "import": ("Berichte importieren (Strg+4)", "Öffnet die Ansicht zum Importieren von Word-Dateien"),
-            "templates": ("Vorlagen (Strg+5)", "Öffnet die Vorlagenverwaltung"),
-            "statistics": ("Statistiken (Strg+6)", "Zeigt Statistiken über alle Berichte an"),
-            "backup": ("Backup (Strg+7)", "Öffnet die Ansicht für Datensicherung und Wiederherstellung"),
-            "settings": ("Einstellungen (Strg+8)", "Öffnet die Anwendungseinstellungen")
+            "load_report": ("Bericht laden (Strg+2)", "Öffnet die Ansicht zum Laden eines gespeicherten Berichts"),
+            "import": ("Berichte importieren (Strg+3)", "Öffnet die Ansicht zum Importieren von Word-Dateien"),
+            "templates": ("Vorlagen (Strg+4)", "Öffnet die Vorlagenverwaltung"),
+            "statistics": ("Statistiken (Strg+5)", "Zeigt Statistiken über alle Berichte an"),
+            "backup": ("Backup (Strg+6)", "Öffnet die Ansicht für Datensicherung und Wiederherstellung"),
+            "settings": ("Einstellungen (Strg+7)", "Öffnet die Anwendungseinstellungen")
         }
 
         for i, (view_name, (text, acc_text)) in enumerate(buttons_to_create.items()):
@@ -219,9 +213,9 @@ class BerichtsheftApp(ctk.CTk):
 
     def _create_and_register_views(self) -> None:
         """Erstellt Instanzen aller Ansichten und speichert sie in einem Dictionary."""
+        # --- KORREKTUR: Dashboard entfernt ---
         self.views = {
             "berichtsheft": BerichtsheftView(self.view_container, self),
-            "dashboard": DashboardView(self.view_container, self),
             "load_report": LoadReportView(self.view_container, self),
             "import": ImportView(self.view_container, self), 
             "templates": TemplateView(self.view_container, self),
@@ -253,11 +247,9 @@ class BerichtsheftApp(ctk.CTk):
             logger.error(f"Versuch, eine nicht existierende Ansicht anzuzeigen: {view_name}")
 
     def update_status(self, message: str) -> None:
-        """Aktualisiert den Text in der Statusleiste."""
         self.status_bar.configure(text=message)
 
     def speak(self, message: str, interrupt: bool = True) -> None:
-        """Sendet eine Nachricht an den Screenreader, falls einer aktiv ist."""
         if self.screen_reader_active and self.speaker:
             try:
                 self.speaker.speak(message, interrupt=interrupt)
@@ -265,14 +257,12 @@ class BerichtsheftApp(ctk.CTk):
                 logging.warning(f"Fehler bei der Sprachausgabe: {e}")
 
     def _toggle_theme(self) -> None:
-        """Wechselt zwischen Light- und Dark-Mode."""
         new_mode = "light" if ctk.get_appearance_mode() == "Dark" else "dark"
         ctk.set_appearance_mode(new_mode)
         if "statistics" in self.views and self.views["statistics"].winfo_viewable():
             self.views["statistics"].on_show()
 
     def _open_output_folder(self) -> None:
-        """Öffnet den Ausgabeordner im Dateimanager des Betriebssystems."""
         folder_path = config.AUSGABE_ORDNER
         try:
             os.makedirs(folder_path, exist_ok=True)
@@ -281,7 +271,7 @@ class BerichtsheftApp(ctk.CTk):
                 os.startfile(os.path.realpath(folder_path))
             elif sys.platform == "darwin":
                 subprocess.run(["open", folder_path], check=True)
-            else: # Linux und andere
+            else:
                 subprocess.run(["xdg-open", folder_path], check=True)
 
             self.update_status(f"Ordner '{folder_path}' geöffnet.")
@@ -290,7 +280,6 @@ class BerichtsheftApp(ctk.CTk):
             logger.error(f"Fehler beim Öffnen des Ausgabeordners: {e}", exc_info=True)
 
     def speichere_persoenliche_daten(self, name: str, startdatum: str):
-        """Speichert Name und Startdatum aus der Einstellungs- oder Berichtsheftansicht."""
         konfig = self.data_manager.lade_konfiguration()
         konfig["name_azubi"] = name
         konfig["startdatum_ausbildung"] = startdatum
@@ -300,7 +289,6 @@ class BerichtsheftApp(ctk.CTk):
             self.update_status("Fehler beim Speichern der persönlichen Daten.")
 
     def speichere_einstellungen(self, neue_einstellungen: Dict[str, Any]):
-        """Speichert die allgemeinen Einstellungen aus der SettingsView."""
         konfig = self.data_manager.lade_konfiguration()
         konfig["einstellungen"] = neue_einstellungen
         if self.data_manager.speichere_konfiguration(konfig):
@@ -313,11 +301,9 @@ class BerichtsheftApp(ctk.CTk):
             messagebox.showerror("Fehler", "Die Einstellungen konnten nicht gespeichert werden.")
 
     def sammle_daten_fuer_bericht(self) -> Optional[Dict[str, Any]]:
-        """Sammelt und validiert alle Daten für die Berichtserstellung."""
         berichtsheft_view = self.views["berichtsheft"]
         context = {}
         try:
-            # Daten direkt aus der Konfigurationsdatei laden
             konfig = self.data_manager.lade_konfiguration()
             context["name_azubi"] = konfig.get("name_azubi", "")
             startdatum_str = konfig.get("startdatum_ausbildung", "")
@@ -340,6 +326,10 @@ class BerichtsheftApp(ctk.CTk):
             context["zeitraum_von"] = start_datum_kw.strftime("%d.%m.%Y")
             context["zeitraum_bis"] = (start_datum_kw + timedelta(days=4)).strftime("%d.%m.%Y")
             
+            context["ausbildungsjahr"] = self.logic.berechne_ausbildungsjahr(
+                context["startdatum_ausbildung_dt"], start_datum_kw
+            )
+
             tage_daten = []
             for widgets in berichtsheft_view.tages_widgets:
                 typ = widgets["typ"].get()
@@ -348,7 +338,6 @@ class BerichtsheftApp(ctk.CTk):
                     taetigkeiten = "-"
                 tage_daten.append({"typ": typ, "stunden": widgets["stunden"].get(), "taetigkeiten": taetigkeiten})
             context["tage_daten"] = tage_daten
-            # --- ÄNDERUNG: Das Datum für die Unterschrift ist immer der Freitag der Woche. ---
             context["erstellungsdatum_bericht"] = context["zeitraum_bis"]
             return context
         except (ValueError, TypeError) as e:
@@ -357,7 +346,6 @@ class BerichtsheftApp(ctk.CTk):
             return None
 
     def erstelle_bericht(self, event: Any = None) -> str:
-        """Startet den Prozess der Berichtserstellung."""
         if self.progress_bar.winfo_ismapped():
             self.update_status("Berichtserstellung läuft bereits.")
             return "break"
@@ -377,7 +365,6 @@ class BerichtsheftApp(ctk.CTk):
         return "break"
 
     def _run_generation(self, context: Dict[str, Any], gewaehltes_format: str) -> None:
-        """Führt die eigentliche Generierung im Controller aus."""
         erfolg, nachricht = self.controller.erstelle_bericht(context, gewaehltes_format)
         if erfolg:
             self.update_status(nachricht)
@@ -388,23 +375,33 @@ class BerichtsheftApp(ctk.CTk):
         self._generation_complete()
         
     def _generation_complete(self) -> None:
-        """Setzt die UI nach der Berichtserstellung zurück."""
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
         berichtsheft_view = self.views.get("berichtsheft")
         if berichtsheft_view:
             berichtsheft_view.create_report_button.configure(state="normal")
             self.update_status("Bereit.")
+    
+    def speichere_aktuellen_bericht(self, event: Any = None) -> str:
+        context = self.sammle_daten_fuer_bericht()
+        if context:
+            self.update_status("Speichere Daten...")
+            erfolg, nachricht = self.controller.speichere_bericht_daten(context)
+            if erfolg:
+                self.update_status(nachricht)
+                if self.views["load_report"].winfo_viewable():
+                    self.views["load_report"].on_show()
+            else:
+                self.update_status(nachricht)
+                messagebox.showerror("Fehler", nachricht)
+        return "break"
 
     def clear_and_prepare_next_report(self):
-        """Leert die Felder und bereitet den nächsten Bericht vor."""
         berichtsheft_view = self.views["berichtsheft"]
         
-        # Felder leeren und Zeiten zurücksetzen
         for widgets in berichtsheft_view.tages_widgets:
             widgets["taetigkeiten"].delete("1.0", "end")
         
-        # Datum und Nummer fortschreiben
         current_date = berichtsheft_view.kalender.get_date()
         next_week = current_date + timedelta(weeks=1)
         berichtsheft_view.kalender.set_date(next_week)
@@ -417,8 +414,10 @@ class BerichtsheftApp(ctk.CTk):
     def _setup_shortcuts(self) -> None:
         """Definiert globale Tastenkürzel."""
         self.bind("<Control-g>", self.erstelle_bericht)
+        self.bind("<Control-s>", self.speichere_aktuellen_bericht)
         
-        view_keys = ["1", "2", "3", "4", "5", "6", "7", "8"]
+        # --- KORREKTUR: Tastenkürzel angepasst ---
+        view_keys = ["1", "2", "3", "4", "5", "6", "7"]
         view_names = list(self.sidebar_buttons.keys())
         for i, key in enumerate(view_keys):
             if i < len(view_names):
@@ -430,7 +429,6 @@ class BerichtsheftApp(ctk.CTk):
         self.bind("<Control-Shift-Tab>", self.select_previous_tab)
 
     def select_next_tab(self, event: Any = None) -> str:
-        """Wählt den nächsten Tab in der Berichtsheft-Ansicht aus."""
         view = self.views.get("berichtsheft")
         if view and isinstance(view, BerichtsheftView):
             view.select_next_tab()
@@ -438,7 +436,6 @@ class BerichtsheftApp(ctk.CTk):
         return "break"
 
     def select_previous_tab(self, event: Any = None) -> str:
-        """Wählt den vorherigen Tab in der Berichtsheft-Ansicht aus."""
         view = self.views.get("berichtsheft")
         if view and isinstance(view, BerichtsheftView):
             view.select_previous_tab()
@@ -446,19 +443,16 @@ class BerichtsheftApp(ctk.CTk):
         return "break"
 
     def _start_update_check(self) -> None:
-        """Startet die Update-Prüfung in einem separaten Thread."""
         update_thread = threading.Thread(target=self._run_update_check, daemon=True)
         update_thread.start()
 
     def _run_update_check(self) -> None:
-        """Führt die eigentliche Update-Prüfung durch."""
         update_service = UpdateService()
         update_info = update_service.check_for_updates()
         if update_info:
             self.after(0, self._show_update_notification, update_info)
 
     def _show_update_notification(self, update_info: Dict[str, str]) -> None:
-        """Zeigt ein Dialogfenster an, wenn ein Update verfügbar ist."""
         version = update_info.get("version")
         url = update_info.get("url")
 
@@ -474,11 +468,9 @@ class BerichtsheftApp(ctk.CTk):
             self.update_status(f"Download-Seite für Version {version} geöffnet.")
 
     def get_berichtsheft_view_reference(self) -> 'BerichtsheftView':
-        """Gibt eine Referenz auf die Berichtsheft-Ansicht zurück."""
         return self.views["berichtsheft"]
 
     def reload_all_data(self) -> None:
-        """Lädt alle Daten neu und aktualisiert die Ansichten."""
         self.update_status("Lade neue Daten...")
         self.get_berichtsheft_view_reference().on_show()
         

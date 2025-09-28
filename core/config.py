@@ -11,8 +11,10 @@ import customtkinter as ctk
 
 # --- Anwendungsinformationen ---
 APP_NAME: str = "Berichtsheft-Generator"
-VERSION: str = "17.5.0"
+VERSION: str = "17.7.0"
+# --- KORREKTUR 2: Korrekte URL zur GitHub API ---
 GITHUB_REPO_URL: str = "https://api.github.com/repos/bigminion110/berichtsheftgenerator-app/releases/latest"
+
 
 # --- Verzeichnisse und Dateipfade ---
 # KORREKTUR: Robuste Pfad-Ermittlung für Entwicklung und PyInstaller (.exe)

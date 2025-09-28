@@ -130,11 +130,16 @@ class DataManager:
 
 
     def loesche_bericht(self, bericht_id: str) -> bool:
-        """Löscht einen Bericht und seine Einträge (dank ON DELETE CASCADE)."""
-        query = "DELETE FROM berichte WHERE bericht_id = ?"
+        """Löscht einen Bericht und seine Einträge explizit."""
+        delete_entries_query = "DELETE FROM tagebucheintraege WHERE bericht_id = ?"
+        delete_report_query = "DELETE FROM berichte WHERE bericht_id = ?"
         try:
             with self.db.transaction() as cursor:
-                cursor.execute(query, (bericht_id,))
+                # KORREKTUR: Zuerst die abhängigen Einträge löschen
+                cursor.execute(delete_entries_query, (bericht_id,))
+                # Dann den Hauptbericht löschen
+                cursor.execute(delete_report_query, (bericht_id,))
+            logger.info(f"Bericht '{bericht_id}' und zugehörige Einträge erfolgreich gelöscht.")
             return True
         except self.db._conn.Error as e:
             logger.error(f"Fehler beim Löschen des Berichts '{bericht_id}': {e}", exc_info=True)

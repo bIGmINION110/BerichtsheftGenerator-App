@@ -183,6 +183,11 @@ class BerichtsheftView(ctk.CTkFrame):
         action_frame = ctk.CTkFrame(self)
         action_frame.grid(row=2, column=0, columnspan=2, sticky="sew", padx=10, pady=10)
         action_frame.grid_columnconfigure(0, weight=1)
+        
+        # --- NEU: Button-Container für Speichern und Erstellen ---
+        button_container = ctk.CTkFrame(action_frame, fg_color="transparent")
+        button_container.pack(side="right", padx=10, pady=5)
+
         format_frame = ctk.CTkFrame(action_frame, fg_color="transparent")
         format_frame.pack(side="left", padx=10, pady=5)
         ctk.CTkLabel(format_frame, text="Format:", font=config.FONT_NORMAL).pack(side="left")
@@ -198,14 +203,25 @@ class BerichtsheftView(ctk.CTkFrame):
                                  accessible_text="Wählt PDF als Ausgabeformat für den Bericht.",
                                  status_callback=self.app.update_status,
                                  speak_callback=self.app.speak).pack(side="left", padx=10)
-        self.create_report_button = AccessibleCTkButton(action_frame, text="Erstellen (Strg+G)", command=self.app.erstelle_bericht, 
+        
+        # --- NEUER SPEICHERN-BUTTON ---
+        self.save_button = AccessibleCTkButton(button_container, text="Speichern (Strg+S)", command=self.app.speichere_aktuellen_bericht, 
+                                              font=config.FONT_BOLD, height=40, 
+                                              fg_color="gray50", hover_color="gray60",
+                                              focus_color=config.FOCUS_COLOR,
+                                              accessible_text="Speichert die aktuellen Eingaben in der Datenbank.",
+                                              status_callback=self.app.update_status,
+                                              speak_callback=self.app.speak)
+        self.save_button.pack(side="left", padx=(0, 10))
+        
+        self.create_report_button = AccessibleCTkButton(button_container, text="Erstellen (Strg+G)", command=self.app.erstelle_bericht, 
                                                         font=config.FONT_BOLD, height=40, 
                                                         fg_color=config.ACCENT_COLOR, hover_color=config.HOVER_COLOR,
                                                         focus_color=config.FOCUS_COLOR,
                                                         accessible_text="Erstellt das Berichtsheft mit den eingegebenen Daten im ausgewählten Format.",
                                                         status_callback=self.app.update_status,
                                                         speak_callback=self.app.speak)
-        self.create_report_button.pack(side="right", padx=10, pady=5)
+        self.create_report_button.pack(side="left")
 
     def on_show(self):
         """Lädt die Konfiguration und passt die Sichtbarkeit der Widgets an."""
