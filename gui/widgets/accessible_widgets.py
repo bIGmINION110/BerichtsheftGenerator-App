@@ -8,6 +8,7 @@ import customtkinter as ctk
 import tkinter as tk
 from typing import Callable, Any, Optional
 from datetime import datetime, timedelta
+import re
 
 # HINWEIS: Der direkte Import von 'accessible_output2' wird hier entfernt.
 # Die Sprachausgabe wird zentral über die Hauptanwendung gesteuert.
@@ -46,6 +47,7 @@ class AccessibleCTkEntry(ctk.CTkEntry, AccessibleBase):
         self.bind("<KeyRelease-Left>", self._speak_current_char)
         self.bind("<KeyRelease-Right>", self._speak_current_char)
         self.bind("<Control-BackSpace>", self._delete_word_backwards)
+        self.bind("<Control-Delete>", self._delete_word_forwards)
 
         if focus_color:
             self._focus_color = focus_color
@@ -135,6 +137,40 @@ class AccessibleCTkEntry(ctk.CTkEntry, AccessibleBase):
             word_start_index = text_before_cursor.rfind(word_to_delete)
             self.delete(word_start_index, cursor_pos)
             self.speak_callback(f"{word_to_delete}", interrupt=True)
+        except tk.TclError:
+            pass
+        return "break"
+
+    def _delete_word_forwards(self, event: Any = None) -> str:
+        """Löscht das Wort oder den Textrest rechts vom Cursor bis zum nächsten Wortanfang."""
+        try:
+            cursor_pos = self.index(tk.INSERT)
+            full_text = self.get()
+            text_after = full_text[cursor_pos:]
+
+            if not text_after:
+                return "break"
+
+            # Finde den Offset bis zum Ende des zu löschenden Teils
+            offset = len(text_after)  # Standard: alles bis zum Ende löschen
+
+            # Finde das erste Nicht-Leerzeichen
+            match = re.search(r'\S', text_after)
+            if match:
+                start_offset = match.start()
+                # Finde das nächste Leerzeichen nach dem Wort
+                end_match = re.search(r'\s', text_after[start_offset:])
+                if end_match:
+                    offset = start_offset + end_match.start()
+            
+            deleted_text = full_text[cursor_pos : cursor_pos + offset].strip()
+            self.delete(cursor_pos, cursor_pos + offset)
+
+            if self.speak_callback and deleted_text:
+                self.speak_callback(f"{deleted_text} gelöscht", interrupt=True)
+            elif self.speak_callback and offset > 0:
+                self.speak_callback("Leerzeichen gelöscht", interrupt=True)
+
         except tk.TclError:
             pass
         return "break"
@@ -289,6 +325,7 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
         self.bind("<KeyRelease-Left>", self._speak_current_char)
         self.bind("<KeyRelease-Right>", self._speak_current_char)
         self.bind("<Control-BackSpace>", self._delete_word_backwards)
+        self.bind("<Control-Delete>", self._delete_word_forwards)
 
         if focus_color:
             self._focus_color = focus_color
@@ -314,9 +351,9 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
                 return "break" 
             
             word_to_delete = words[-1]
-            word_start_index = line_content.rfind(word_to_delete)
+            word_start_index_offset = line_content.rfind(word_to_delete)
             
-            delete_start_index = f"{cursor_index.split('.')[0]}.{word_start_index}"
+            delete_start_index = f"{cursor_index.split('.')[0]}.{word_start_index_offset}"
             
             self.delete(delete_start_index, cursor_index)
             self.speak_callback(f"{word_to_delete}", interrupt=True)
@@ -325,6 +362,41 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
             pass 
         
         return "break" 
+
+    def _delete_word_forwards(self, event: Any = None) -> str:
+        """Löscht das Wort oder den Textrest rechts vom Cursor bis zum nächsten Wortanfang."""
+        try:
+            start_index = self.index(tk.INSERT)
+            text_after = self.get(start_index, "end")
+
+            if not text_after.strip():
+                return "break"
+
+            # Finde den Offset bis zum Ende des zu löschenden Teils
+            offset = len(text_after) # Standard: alles bis zum Ende
+
+            # Finde das erste Nicht-Leerzeichen (Beginn des Worts)
+            match = re.search(r'\S', text_after)
+            if match:
+                start_offset = match.start()
+                # Finde das nächste Leerzeichen nach Beginn des Worts
+                end_match = re.search(r'\s', text_after[start_offset:])
+                if end_match:
+                    offset = start_offset + end_match.start()
+            
+            end_index = self.index(f"{start_index} + {offset} chars")
+            deleted_text = self.get(start_index, end_index).strip()
+            
+            self.delete(start_index, end_index)
+
+            if self.speak_callback and deleted_text:
+                self.speak_callback(f"{deleted_text} gelöscht", interrupt=True)
+            elif self.speak_callback and offset > 0:
+                self.speak_callback("Leerzeichen gelöscht", interrupt=True)
+                
+        except tk.TclError:
+            pass
+        return "break"
 
     def _speak_current_line(self, event: Any = None):
         if not self.speak_callback:
@@ -364,4 +436,3 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
 
     def _on_lose_focus_border(self, event: Any = None):
         self.configure(border_width=self._original_border_width, border_color=self._original_border_color)
-        

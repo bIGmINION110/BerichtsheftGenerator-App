@@ -40,10 +40,6 @@ class LoadReportView(ctk.CTkFrame):
 
         self.scroll_frame = ctk.CTkScrollableFrame(self, label_text="Gespeicherte Berichte")
         self.scroll_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        
-        # Navigation an das Scroll-Frame binden, da es immer den Fokus hat
-        self.scroll_frame.bind_all("<Up>", self._navigate_reports, add=True)
-        self.scroll_frame.bind_all("<Down>", self._navigate_reports, add=True)
 
 
     def _populate_report_list(self):
@@ -124,7 +120,7 @@ class LoadReportView(ctk.CTkFrame):
 
     def _navigate_reports(self, event):
         """Ermöglicht die Navigation mit den Pfeiltasten."""
-        if not self.report_frames:
+        if not self.winfo_viewable() or not self.report_frames:
             return
 
         if event.keysym == "Down":

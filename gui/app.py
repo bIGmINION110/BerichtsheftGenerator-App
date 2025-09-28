@@ -42,6 +42,7 @@ from gui.views.statistics_view import StatisticsView
 from gui.views.backup_view import BackupView
 from gui.views.import_view import ImportView
 from gui.views.settings_view import SettingsView
+from gui.views.help_view import HelpView
 from .widgets.accessible_widgets import AccessibleCTkButton, AccessibleCTkSwitch
 from services.update_service import UpdateService
 from .widgets.custom_dialogs import CustomMessagebox
@@ -162,7 +163,6 @@ class BerichtsheftApp(ctk.CTk):
         
         self.sidebar_frame = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color=config.SIDEBAR_BG_COLOR)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsw")
-        self.sidebar_frame.grid_rowconfigure(8, weight=1)
         self._create_sidebar_widgets()
 
         self.view_container = ctk.CTkFrame(self, fg_color=config.FRAME_BG_COLOR)
@@ -176,10 +176,9 @@ class BerichtsheftApp(ctk.CTk):
             self.logo_image = ctk.CTkImage(Image.open(config.LOGO_DATEI), size=(35, 35))
             ctk.CTkLabel(self.sidebar_frame, image=self.logo_image, text=config.APP_NAME, font=ctk.CTkFont(size=24, weight="bold"), compound="left", padx=20).grid(row=0, column=0, padx=20, pady=25)
         
-        # --- KORREKTUR: Dashboard entfernt ---
         buttons_to_create = {
             "berichtsheft": ("Berichtsheft (Strg+1)", "Öffnet die Ansicht zum Erstellen und Bearbeiten von Berichten"),
-            "load_report": ("Bericht laden (Strg+2)", "Öffnet die Ansicht zum Laden eines gespeicherten Berichts"),
+            "load_report": ("Bericht laden (Strg+L)", "Öffnet die Ansicht zum Laden eines gespeicherten Berichts"),
             "import": ("Berichte importieren (Strg+3)", "Öffnet die Ansicht zum Importieren von Word-Dateien"),
             "templates": ("Vorlagen (Strg+4)", "Öffnet die Vorlagenverwaltung"),
             "statistics": ("Statistiken (Strg+5)", "Zeigt Statistiken über alle Berichte an"),
@@ -187,6 +186,7 @@ class BerichtsheftApp(ctk.CTk):
             "settings": ("Einstellungen (Strg+7)", "Öffnet die Anwendungseinstellungen")
         }
 
+        # Haupt-Navigationsbuttons
         for i, (view_name, (text, acc_text)) in enumerate(buttons_to_create.items()):
             button = AccessibleCTkButton(self.sidebar_frame, text=text, command=lambda v=view_name: self.show_view(v), 
                                          anchor="w", font=config.FONT_SIDEBAR, fg_color=config.SIDEBAR_BUTTON_INACTIVE_COLOR, 
@@ -196,9 +196,28 @@ class BerichtsheftApp(ctk.CTk):
                                          accessible_text=acc_text, status_callback=self.update_status, speak_callback=self.speak)
             button.grid(row=i + 1, column=0, padx=20, pady=12, sticky="ew")
             self.sidebar_buttons[view_name] = button
+
+        # Hilfe-Button
+        help_button = AccessibleCTkButton(self.sidebar_frame, text="Hilfe (F1)", command=lambda: self.show_view("help"), 
+                                         anchor="w", font=config.FONT_SIDEBAR, fg_color=config.SIDEBAR_BUTTON_INACTIVE_COLOR, 
+                                         hover_color=config.HOVER_COLOR,
+                                         focus_color=config.FOCUS_COLOR,
+                                         height=40,
+                                         accessible_text="Öffnet die Hilfe-Ansicht mit allen Tastenkombinationen.", 
+                                         status_callback=self.update_status, speak_callback=self.speak)
+        help_button.grid(row=len(buttons_to_create) + 1, column=0, padx=20, pady=12, sticky="ew")
+        self.sidebar_buttons["help"] = help_button
         
+        # Unterer Bereich mit "Über", Ordner-Button und Theme-Switch
+        self.sidebar_frame.grid_rowconfigure(len(buttons_to_create) + 2, weight=1)
         bottom_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        bottom_frame.grid(row=8, column=0, padx=20, pady=20, sticky="s")
+        bottom_frame.grid(row=len(buttons_to_create) + 3, column=0, padx=20, pady=20, sticky="s")
+        
+        AccessibleCTkButton(bottom_frame, text="Über...", command=self._show_about_dialog,
+                              font=config.FONT_NORMAL,
+                              focus_color=config.FOCUS_COLOR,
+                              accessible_text="Zeigt Informationen über die Anwendung an.", 
+                              status_callback=self.update_status, speak_callback=self.speak).pack(pady=10)
         
         AccessibleCTkButton(bottom_frame, text="Ordner öffnen", command=self._open_output_folder,
                               font=config.FONT_NORMAL,
@@ -211,9 +230,22 @@ class BerichtsheftApp(ctk.CTk):
                             accessible_text="Schaltet zwischen hellem und dunklem Design um",
                             status_callback=self.update_status, speak_callback=self.speak).pack()
 
+    def _show_about_dialog(self):
+        """Zeigt das 'Über'-Fenster mit Anwendungsinformationen an."""
+        about_text = (
+            f"{config.APP_NAME}\n"
+            f"Version: {config.VERSION}\n\n"
+            "Diese Anwendung dient der einfachen Erstellung und Verwaltung von Ausbildungsnachweisen der Zentrum für Berufliche Bildung (blista).\n\n"
+            "Entwickelt von: bIGmINION110\n\n"
+            "Basiert auf Python: CustomTkinter, Tkinter, accessible-output2, altgraph, babel, contourpy, cycler, darkdetect, defusedxml, fonttools, fpdf2, kiwisolver, libloader, lxml, matplotlib, numpy, packaging, pillow, platform_utils, platformdirs, pyinstaller, pyinstaller-hooks-contrib, pyparsing, python-dateutil, python-docx, setuptools, six, tkcalendar, typing_extensions, pytest, pywin32, pywin32-ctypes, pefile, pyelftools und macholib.\n\n\n"
+            f"Projektseite: {config.GITHUB_LINK}\n\n"
+            f"© {datetime.now().year} bIGmINION110. Alle Rechte vorbehalten."
+        )
+        # Wir verwenden hier unseren eigenen Dialog
+        CustomMessagebox(title="Über Berichtsheft-Generator", message=about_text).get_choice()
+
     def _create_and_register_views(self) -> None:
         """Erstellt Instanzen aller Ansichten und speichert sie in einem Dictionary."""
-        # --- KORREKTUR: Dashboard entfernt ---
         self.views = {
             "berichtsheft": BerichtsheftView(self.view_container, self),
             "load_report": LoadReportView(self.view_container, self),
@@ -222,6 +254,7 @@ class BerichtsheftApp(ctk.CTk):
             "statistics": StatisticsView(self.view_container, self),
             "backup": BackupView(self.view_container, self),
             "settings": SettingsView(self.view_container, self),
+            "help": HelpView(self.view_container, self),
         }
         
     def show_view(self, view_name: str, run_on_show: bool = True) -> None:
@@ -323,8 +356,9 @@ class BerichtsheftApp(ctk.CTk):
             
             context["startdatum_ausbildung_dt"] = datetime.strptime(startdatum_str, "%d.%m.%Y").date()
             start_datum_kw = date.fromisocalendar(context["jahr"], context["kalenderwoche"], 1)
+            freitag_datum_kw = start_datum_kw + timedelta(days=4)
             context["zeitraum_von"] = start_datum_kw.strftime("%d.%m.%Y")
-            context["zeitraum_bis"] = (start_datum_kw + timedelta(days=4)).strftime("%d.%m.%Y")
+            context["zeitraum_bis"] = freitag_datum_kw.strftime("%d.%m.%Y")
             
             context["ausbildungsjahr"] = self.logic.berechne_ausbildungsjahr(
                 context["startdatum_ausbildung_dt"], start_datum_kw
@@ -338,7 +372,7 @@ class BerichtsheftApp(ctk.CTk):
                     taetigkeiten = "-"
                 tage_daten.append({"typ": typ, "stunden": widgets["stunden"].get(), "taetigkeiten": taetigkeiten})
             context["tage_daten"] = tage_daten
-            context["erstellungsdatum_bericht"] = context["zeitraum_bis"]
+            context["erstellungsdatum_bericht"] = freitag_datum_kw.strftime("%d.%m.%Y")
             return context
         except (ValueError, TypeError) as e:
             messagebox.showerror("Eingabefehler", str(e))
@@ -396,7 +430,7 @@ class BerichtsheftApp(ctk.CTk):
                 messagebox.showerror("Fehler", nachricht)
         return "break"
 
-    def clear_and_prepare_next_report(self):
+    def clear_and_prepare_next_report(self, event: Any = None):
         berichtsheft_view = self.views["berichtsheft"]
         
         for widgets in berichtsheft_view.tages_widgets:
@@ -410,23 +444,56 @@ class BerichtsheftApp(ctk.CTk):
         berichtsheft_view.nummer_var.set(str(current_number + 1))
         
         self.update_status("Bereit für den nächsten Bericht.")
+        self.speak("Neuer Bericht vorbereitet.")
+        return "break"
 
     def _setup_shortcuts(self) -> None:
         """Definiert globale Tastenkürzel."""
         self.bind("<Control-g>", self.erstelle_bericht)
         self.bind("<Control-s>", self.speichere_aktuellen_bericht)
+        self.bind("<Control-n>", self.clear_and_prepare_next_report)
+        self.bind("<Control-l>", lambda event: self.show_view("load_report"))
+        self.bind("<F1>", lambda event: self.show_view("help"))
+
+        self.bind("<Up>", self._navigate_loaded_reports)
+        self.bind("<Down>", self._navigate_loaded_reports)
+        self.bind("<Return>", self._action_on_loaded_report)
+        self.bind("<space>", self._action_on_loaded_report)
+        self.bind("<Delete>", self._action_on_loaded_report)
         
-        # --- KORREKTUR: Tastenkürzel angepasst ---
-        view_keys = ["1", "2", "3", "4", "5", "6", "7"]
-        view_names = list(self.sidebar_buttons.keys())
+        view_keys = ["1", "3", "4", "5", "6", "7"]
+        view_names = ["berichtsheft", "import", "templates", "statistics", "backup", "settings"]
         for i, key in enumerate(view_keys):
             if i < len(view_names):
                 self.bind(f"<Control-KeyPress-{key}>", lambda event, v=view_names[i]: self.show_view(v))
         
+        self.bind("<Alt-a>", lambda event: self._show_about_dialog())
         self.bind("<Control-o>", lambda event: self._open_output_folder())
 
         self.bind("<Control-Tab>", self.select_next_tab)
         self.bind("<Control-Shift-Tab>", self.select_previous_tab)
+
+    def _navigate_loaded_reports(self, event: Any) -> None:
+        """Leitet Navigationsbefehle an die 'Bericht laden'-Ansicht weiter, wenn sie aktiv ist."""
+        view = self.views.get("load_report")
+        if view and view.winfo_viewable():
+            view._navigate_reports(event)
+
+    def _action_on_loaded_report(self, event: Any) -> None:
+        """Führt Laden oder Löschen in der 'Bericht laden'-Ansicht aus."""
+        view = self.views.get("load_report")
+        if not (view and view.winfo_viewable()):
+            return
+
+        focused_frame = view.focus_get()
+        if focused_frame and hasattr(focused_frame, "report_id"):
+            report_data = focused_frame.report_data
+            report_id = focused_frame.report_id
+
+            if event.keysym in ["Return", "space"]:
+                view._load_report(report_data)
+            elif event.keysym == "Delete":
+                view._delete_report(report_id)
 
     def select_next_tab(self, event: Any = None) -> str:
         view = self.views.get("berichtsheft")

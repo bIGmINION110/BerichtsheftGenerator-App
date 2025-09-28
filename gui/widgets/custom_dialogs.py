@@ -29,18 +29,31 @@ class CustomMessagebox(ctk.CTkToplevel):
         main_frame = ctk.CTkFrame(self)
         main_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         main_frame.grid_columnconfigure(0, weight=1)
+        # NEU: Mindestgröße für den Frame festlegen, um das Fenster zu vergrößern
+        main_frame.configure(width=500, height=250)
         
-        ctk.CTkLabel(main_frame, text=message, wraplength=300, justify="center").pack(padx=20, pady=(20, 10))
+        # Schriftgröße und Zeilenumbruch für die Nachricht angepasst
+        ctk.CTkLabel(main_frame, text=message, wraplength=450, justify="center", font=ctk.CTkFont(size=16)).pack(padx=20, pady=(20, 15), expand=True)
 
         button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        button_frame.pack(padx=20, pady=20, fill="x")
+        button_frame.pack(padx=20, pady=(10, 20), fill="x", side="bottom")
         
-        for i, button_text in enumerate(buttons):
-            button_frame.grid_columnconfigure(i, weight=1)
-            btn = ctk.CTkButton(button_frame, text=button_text, command=lambda choice=button_text: self._set_choice(choice))
-            btn.grid(row=0, column=i, padx=5, pady=5, sticky="ew")
+        # Buttons zentrieren, wenn es weniger als 3 sind
+        num_buttons = len(buttons)
+        if num_buttons < 3:
+            button_frame.grid_columnconfigure(0, weight=1)
+            button_frame.grid_columnconfigure(num_buttons + 1, weight=1)
 
-        # Zentriert das Fenster auf dem Bildschirm
+        for i, button_text in enumerate(buttons):
+            # Buttons bekommen etwas mehr Platz und Höhe
+            btn = ctk.CTkButton(button_frame, text=button_text, command=lambda choice=button_text: self._set_choice(choice), height=35)
+            btn.grid(row=0, column=i + 1, padx=10, pady=5, sticky="ew")
+
+        # Fenster zentrieren, nachdem die Mindestgröße wirksam wurde
+        self.after(50, self._center_window)
+
+    def _center_window(self):
+        """Zentriert das Fenster auf dem Bildschirm."""
         self.update_idletasks()
         width = self.winfo_width()
         height = self.winfo_height()
