@@ -35,7 +35,6 @@ from core.controller import AppController
 from core.logic import BerichtsheftLogik
 
 from gui.views.berichtsheft_view import BerichtsheftView
-# from gui.views.dashboard_view import DashboardView # ENTFERNT
 from gui.views.load_report_view import LoadReportView
 from gui.views.template_view import TemplateView
 from gui.views.statistics_view import StatisticsView
@@ -44,6 +43,7 @@ from gui.views.import_view import ImportView
 from gui.views.settings_view import SettingsView
 from gui.views.help_view import HelpView
 from .widgets.accessible_widgets import AccessibleCTkButton, AccessibleCTkSwitch
+from .widgets.animated_frame import AnimatedFrame  # NEUER IMPORT
 from services.update_service import UpdateService
 from .widgets.custom_dialogs import CustomMessagebox
 
@@ -75,6 +75,7 @@ class BerichtsheftApp(ctk.CTk):
         self.logo_image: Optional[ctk.CTkImage] = None
         self.views: Dict[str, ctk.CTkFrame] = {}
         self.sidebar_buttons: Dict[str, ctk.CTkButton] = {}
+        self.current_view: Optional[ctk.CTkFrame] = None # NEU: Referenz zur aktuellen Ansicht
 
         self._setup_window()
         self._create_main_layout()
@@ -170,6 +171,7 @@ class BerichtsheftApp(ctk.CTk):
         self.view_container.grid_columnconfigure(0, weight=1)
         self.view_container.grid_rowconfigure(0, weight=1)
 
+
     def _create_sidebar_widgets(self) -> None:
         """Füllt die Seitenleiste mit Logo, Titel und Navigations-Buttons."""
         if Image and os.path.exists(config.LOGO_DATEI):
@@ -246,31 +248,43 @@ class BerichtsheftApp(ctk.CTk):
 
     def _create_and_register_views(self) -> None:
         """Erstellt Instanzen aller Ansichten und speichert sie in einem Dictionary."""
-        self.views = {
-            "berichtsheft": BerichtsheftView(self.view_container, self),
-            "load_report": LoadReportView(self.view_container, self),
-            "import": ImportView(self.view_container, self), 
-            "templates": TemplateView(self.view_container, self),
-            "statistics": StatisticsView(self.view_container, self),
-            "backup": BackupView(self.view_container, self),
-            "settings": SettingsView(self.view_container, self),
-            "help": HelpView(self.view_container, self),
+        # ANPASSUNG: Die Views werden nicht mehr direkt im Container platziert.
+        # Stattdessen werden hier nur die Klassen registriert.
+        self.view_classes = {
+            "berichtsheft": BerichtsheftView,
+            "load_report": LoadReportView,
+            "import": ImportView, 
+            "templates": TemplateView,
+            "statistics": StatisticsView,
+            "backup": BackupView,
+            "settings": SettingsView,
+            "help": HelpView,
         }
-        
+
     def show_view(self, view_name: str, run_on_show: bool = True) -> None:
-        """Blendet die aktuelle Ansicht aus und zeigt die ausgewählte an."""
+        """Blendet die aktuelle Ansicht aus, zeigt die ausgewählte animiert an."""
+        # Buttons hervorheben
         for name, button in self.sidebar_buttons.items():
             button.configure(fg_color=config.ACCENT_COLOR if name == view_name else config.SIDEBAR_BUTTON_INACTIVE_COLOR)
         
-        for view in self.views.values():
-            view.grid_forget()
-        
-        view_to_show = self.views.get(view_name)
-        if view_to_show:
-            if hasattr(view_to_show, 'on_show') and run_on_show:
-                view_to_show.on_show()
+        # Alte Ansicht zerstören, falls vorhanden
+        if self.current_view:
+            self.current_view.destroy()
+
+        # Neue Ansicht erstellen und animieren
+        view_class = self.view_classes.get(view_name)
+        if view_class:
+            # ANPASSUNG: Die View wird in einem animierbaren Frame erstellt
+            new_view = view_class(self.view_container, self)
+            self.current_view = new_view # Referenz speichern
+
+            if hasattr(new_view, 'on_show') and run_on_show:
+                new_view.on_show()
+
+            # Layout mit .place() statt .grid()
+            new_view.place(relx=1.0, rely=0, relwidth=1, relheight=1) # Startposition außerhalb des Fensters
+            self.animate_slide_in(new_view)
             
-            view_to_show.grid(row=0, column=0, sticky="nsew")
             readable_name = view_name.replace('_', ' ').title()
             self.update_status(f"Ansicht '{readable_name}' geladen.")
             if run_on_show:
@@ -278,6 +292,16 @@ class BerichtsheftApp(ctk.CTk):
         else:
             self.update_status(f"Fehler: Ansicht '{view_name}' nicht gefunden.")
             logger.error(f"Versuch, eine nicht existierende Ansicht anzuzeigen: {view_name}")
+
+    def animate_slide_in(self, widget: ctk.CTkFrame, start_pos: float = 1.0):
+        """Animiert ein Widget von rechts ins Bild."""
+        if start_pos > 0:
+            start_pos -= 0.04 # Animationsgeschwindigkeit
+            widget.place(relx=max(start_pos, 0), rely=0, relwidth=1, relheight=1)
+            self.after(8, lambda: self.animate_slide_in(widget, start_pos)) # Intervall
+        else:
+            widget.place(relx=0, rely=0, relwidth=1, relheight=1)
+
 
     def update_status(self, message: str) -> None:
         self.status_bar.configure(text=message)
@@ -334,7 +358,7 @@ class BerichtsheftApp(ctk.CTk):
             messagebox.showerror("Fehler", "Die Einstellungen konnten nicht gespeichert werden.")
 
     def sammle_daten_fuer_bericht(self) -> Optional[Dict[str, Any]]:
-        berichtsheft_view = self.views["berichtsheft"]
+        berichtsheft_view = self.get_berichtsheft_view_reference()
         context = {}
         try:
             konfig = self.data_manager.lade_konfiguration()
@@ -384,7 +408,7 @@ class BerichtsheftApp(ctk.CTk):
             self.update_status("Berichtserstellung läuft bereits.")
             return "break"
 
-        berichtsheft_view = self.views["berichtsheft"]
+        berichtsheft_view = self.get_berichtsheft_view_reference()
         berichtsheft_view.create_report_button.configure(state="disabled")
         self.progress_bar.pack(side="right", padx=10, pady=2, fill="x", expand=True)
         self.progress_bar.start()
@@ -402,7 +426,7 @@ class BerichtsheftApp(ctk.CTk):
         erfolg, nachricht = self.controller.erstelle_bericht(context, gewaehltes_format)
         if erfolg:
             self.update_status(nachricht)
-            self.views["berichtsheft"].on_show()
+            self.get_berichtsheft_view_reference().on_show()
             self.clear_and_prepare_next_report()
         else:
             messagebox.showerror("Fehler", nachricht)
@@ -411,7 +435,7 @@ class BerichtsheftApp(ctk.CTk):
     def _generation_complete(self) -> None:
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
-        berichtsheft_view = self.views.get("berichtsheft")
+        berichtsheft_view = self.get_berichtsheft_view_reference()
         if berichtsheft_view:
             berichtsheft_view.create_report_button.configure(state="normal")
             self.update_status("Bereit.")
@@ -423,15 +447,16 @@ class BerichtsheftApp(ctk.CTk):
             erfolg, nachricht = self.controller.speichere_bericht_daten(context)
             if erfolg:
                 self.update_status(nachricht)
-                if self.views["load_report"].winfo_viewable():
-                    self.views["load_report"].on_show()
+                # Ansicht neu laden, falls sie gerade angezeigt wird
+                if self.current_view and isinstance(self.current_view, LoadReportView):
+                    self.current_view.on_show()
             else:
                 self.update_status(nachricht)
                 messagebox.showerror("Fehler", nachricht)
         return "break"
 
     def clear_and_prepare_next_report(self, event: Any = None):
-        berichtsheft_view = self.views["berichtsheft"]
+        berichtsheft_view = self.get_berichtsheft_view_reference()
         
         for widgets in berichtsheft_view.tages_widgets:
             widgets["taetigkeiten"].delete("1.0", "end")
@@ -475,14 +500,13 @@ class BerichtsheftApp(ctk.CTk):
 
     def _navigate_loaded_reports(self, event: Any) -> None:
         """Leitet Navigationsbefehle an die 'Bericht laden'-Ansicht weiter, wenn sie aktiv ist."""
-        view = self.views.get("load_report")
-        if view and view.winfo_viewable():
-            view._navigate_reports(event)
+        if self.current_view and isinstance(self.current_view, LoadReportView):
+            self.current_view._navigate_reports(event)
 
     def _action_on_loaded_report(self, event: Any) -> None:
         """Führt Laden oder Löschen in der 'Bericht laden'-Ansicht aus."""
-        view = self.views.get("load_report")
-        if not (view and view.winfo_viewable()):
+        view = self.current_view
+        if not (view and isinstance(view, LoadReportView)):
             return
 
         focused_frame = view.focus_get()
@@ -496,14 +520,14 @@ class BerichtsheftApp(ctk.CTk):
                 view._delete_report(report_id)
 
     def select_next_tab(self, event: Any = None) -> str:
-        view = self.views.get("berichtsheft")
+        view = self.get_berichtsheft_view_reference()
         if view and isinstance(view, BerichtsheftView):
             view.select_next_tab()
             self.speak(f"Tab {view.tabview.get()} ausgewählt")
         return "break"
 
     def select_previous_tab(self, event: Any = None) -> str:
-        view = self.views.get("berichtsheft")
+        view = self.get_berichtsheft_view_reference()
         if view and isinstance(view, BerichtsheftView):
             view.select_previous_tab()
             self.speak(f"Tab {view.tabview.get()} ausgewählt")
@@ -535,15 +559,26 @@ class BerichtsheftApp(ctk.CTk):
             self.update_status(f"Download-Seite für Version {version} geöffnet.")
 
     def get_berichtsheft_view_reference(self) -> 'BerichtsheftView':
-        return self.views["berichtsheft"]
+        """Gibt eine Referenz auf die Berichtsheft-Ansicht, auch wenn sie nicht aktiv ist."""
+        # ANPASSUNG: Erstellt die Ansicht, falls sie noch nicht existiert
+        if "berichtsheft" not in self.views:
+             self.views["berichtsheft"] = self.view_classes["berichtsheft"](self.view_container, self)
+        
+        # Stellt sicher, dass wir eine Instanz haben, falls die Ansicht gerade nicht die `current_view` ist
+        if not isinstance(self.current_view, BerichtsheftView):
+            if "berichtsheft" not in self.views or not isinstance(self.views["berichtsheft"], BerichtsheftView):
+                 self.views["berichtsheft"] = self.view_classes["berichtsheft"](self.view_container, self)
+            return self.views["berichtsheft"]
+
+        return self.current_view
+
 
     def reload_all_data(self) -> None:
         self.update_status("Lade neue Daten...")
         self.get_berichtsheft_view_reference().on_show()
         
-        for view_name, view in self.views.items():
-            if view.winfo_viewable() and hasattr(view, 'on_show') and view_name != "import":
-                view.on_show()
+        if self.current_view and hasattr(self.current_view, 'on_show'):
+            self.current_view.on_show()
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
