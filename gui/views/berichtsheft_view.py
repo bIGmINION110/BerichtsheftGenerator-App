@@ -184,7 +184,6 @@ class BerichtsheftView(ctk.CTkFrame):
         action_frame.grid(row=2, column=0, columnspan=2, sticky="sew", padx=10, pady=10)
         action_frame.grid_columnconfigure(0, weight=1)
         
-        # --- NEU: Button-Container für Speichern und Erstellen ---
         button_container = ctk.CTkFrame(action_frame, fg_color="transparent")
         button_container.pack(side="right", padx=10, pady=5)
 
@@ -204,7 +203,15 @@ class BerichtsheftView(ctk.CTkFrame):
                                  status_callback=self.app.update_status,
                                  speak_callback=self.app.speak).pack(side="left", padx=10)
         
-        # --- NEUER SPEICHERN-BUTTON ---
+        # NEUER BUTTON: "Neuer Bericht"
+        new_report_button = AccessibleCTkButton(button_container, text="Neuer Bericht (Strg+N)", command=self.app.clear_and_prepare_next_report,
+                                                font=config.FONT_BOLD, height=40,
+                                                focus_color=config.FOCUS_COLOR,
+                                                accessible_text="Leert die Eingabefelder und bereitet den nächsten Bericht vor.",
+                                                status_callback=self.app.update_status,
+                                                speak_callback=self.app.speak)
+        new_report_button.pack(side="left", padx=(0, 10))
+
         self.save_button = AccessibleCTkButton(button_container, text="Speichern (Strg+S)", command=self.app.speichere_aktuellen_bericht, 
                                               font=config.FONT_BOLD, height=40, 
                                               fg_color="gray50", hover_color="gray60",

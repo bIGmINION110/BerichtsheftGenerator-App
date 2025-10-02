@@ -43,7 +43,7 @@ from gui.views.import_view import ImportView
 from gui.views.settings_view import SettingsView
 from gui.views.help_view import HelpView
 from .widgets.accessible_widgets import AccessibleCTkButton, AccessibleCTkSwitch
-from .widgets.animated_frame import AnimatedFrame  # NEUER IMPORT
+from gui.animation_manager import AnimationManager
 from services.update_service import UpdateService
 from .widgets.custom_dialogs import CustomMessagebox
 
@@ -75,7 +75,9 @@ class BerichtsheftApp(ctk.CTk):
         self.logo_image: Optional[ctk.CTkImage] = None
         self.views: Dict[str, ctk.CTkFrame] = {}
         self.sidebar_buttons: Dict[str, ctk.CTkButton] = {}
-        self.current_view: Optional[ctk.CTkFrame] = None # NEU: Referenz zur aktuellen Ansicht
+        self.current_view: Optional[ctk.CTkFrame] = None
+        
+        self.animation_manager = AnimationManager(self)
 
         self._setup_window()
         self._create_main_layout()
@@ -108,7 +110,7 @@ class BerichtsheftApp(ctk.CTk):
                 speaker = outputs.nvda.NVDA()
                 speaker == outputs.jaws.Jaws()
             except NameError as e:
-                logging.info(e + " konnte nicht gefnden werden!")
+                logging.info(str(e) + " konnte nicht gefunden werden!")
                 
             if speaker.is_active():
                 logging.info(f"Aktiver Screenreader '{speaker.name}' erkannt. Sprachausgabe wird aktiviert.")
@@ -129,17 +131,14 @@ class BerichtsheftApp(ctk.CTk):
     def _setup_window(self) -> None:
         """Konfiguriert das Hauptfenster."""
         self.title(f"{config.APP_NAME} {config.VERSION}")
-        
-        try:
-            if sys.platform == "win32":
-                self.state('zoomed')
-            elif sys.platform == "darwin":
-                self.wm_attributes("-zoomed", True)
-            else:
-                self.attributes('-zoomed', True)
-        except tk.TclError:
-            logger.warning("Konnte Fenster nicht maximieren ('zoomed' state not supported).")
-            
+
+        start_width = 1280
+        start_height = 800
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width - start_width) // 2
+        y = (screen_height - start_height) // 2
+        self.geometry(f"{start_width}x{start_height}+{x}+{y}")
         self.minsize(1200, 800)
         
         if sys.platform == "win32" and os.path.exists(config.ICON_DATEI):
@@ -243,13 +242,10 @@ class BerichtsheftApp(ctk.CTk):
             f"Projektseite: {config.GITHUB_LINK}\n\n"
             f"© {datetime.now().year} bIGmINION110. Alle Rechte vorbehalten."
         )
-        # Wir verwenden hier unseren eigenen Dialog
         CustomMessagebox(title="Über Berichtsheft-Generator", message=about_text).get_choice()
 
     def _create_and_register_views(self) -> None:
         """Erstellt Instanzen aller Ansichten und speichert sie in einem Dictionary."""
-        # ANPASSUNG: Die Views werden nicht mehr direkt im Container platziert.
-        # Stattdessen werden hier nur die Klassen registriert.
         self.view_classes = {
             "berichtsheft": BerichtsheftView,
             "load_report": LoadReportView,
@@ -263,45 +259,45 @@ class BerichtsheftApp(ctk.CTk):
 
     def show_view(self, view_name: str, run_on_show: bool = True) -> None:
         """Blendet die aktuelle Ansicht aus, zeigt die ausgewählte animiert an."""
-        # Buttons hervorheben
         for name, button in self.sidebar_buttons.items():
             button.configure(fg_color=config.ACCENT_COLOR if name == view_name else config.SIDEBAR_BUTTON_INACTIVE_COLOR)
         
-        # Alte Ansicht zerstören, falls vorhanden
-        if self.current_view:
-            self.current_view.destroy()
+        old_view = self.current_view
 
-        # Neue Ansicht erstellen und animieren
-        view_class = self.view_classes.get(view_name)
-        if view_class:
-            # ANPASSUNG: Die View wird in einem animierbaren Frame erstellt
-            new_view = view_class(self.view_container, self)
-            self.current_view = new_view # Referenz speichern
+        # Erstelle die Ansicht bei Bedarf und speichere sie im Cache
+        if view_name not in self.views:
+            view_class = self.view_classes.get(view_name)
+            if not view_class:
+                logger.error(f"Versuch, eine nicht existierende Ansicht anzuzeigen: {view_name}")
+                return
+            self.views[view_name] = view_class(self.view_container, self)
 
-            if hasattr(new_view, 'on_show') and run_on_show:
+        new_view = self.views[view_name]
+        
+        # Wenn die Ansicht bereits angezeigt wird, führe nur on_show aus (falls gewünscht)
+        if new_view == old_view and run_on_show:
+            if hasattr(new_view, 'on_show'):
                 new_view.on_show()
+            new_view.lift()
+            return
 
-            # Layout mit .place() statt .grid()
-            new_view.place(relx=1.0, rely=0, relwidth=1, relheight=1) # Startposition außerhalb des Fensters
-            self.animate_slide_in(new_view)
-            
-            readable_name = view_name.replace('_', ' ').title()
-            self.update_status(f"Ansicht '{readable_name}' geladen.")
-            if run_on_show:
-                self.speak(f"Ansicht {readable_name}")
+        self.current_view = new_view
+        
+        if hasattr(new_view, 'on_show') and run_on_show:
+            new_view.on_show()
+
+        # Animationen für den Wechsel
+        if old_view:
+            self.animation_manager.animated_tabs(old_view, new_view, mode="slide")
         else:
-            self.update_status(f"Fehler: Ansicht '{view_name}' nicht gefunden.")
-            logger.error(f"Versuch, eine nicht existierende Ansicht anzuzeigen: {view_name}")
+            # Erster Start
+            new_view.place(relx=0, rely=0, relwidth=1, relheight=1)
+            self.animation_manager.slide_in_view(new_view)
 
-    def animate_slide_in(self, widget: ctk.CTkFrame, start_pos: float = 1.0):
-        """Animiert ein Widget von rechts ins Bild."""
-        if start_pos > 0:
-            start_pos -= 0.04 # Animationsgeschwindigkeit
-            widget.place(relx=max(start_pos, 0), rely=0, relwidth=1, relheight=1)
-            self.after(8, lambda: self.animate_slide_in(widget, start_pos)) # Intervall
-        else:
-            widget.place(relx=0, rely=0, relwidth=1, relheight=1)
-
+        readable_name = view_name.replace('_', ' ').title()
+        self.update_status(f"Ansicht '{readable_name}' geladen.")
+        if run_on_show:
+            self.speak(f"Ansicht {readable_name}")
 
     def update_status(self, message: str) -> None:
         self.status_bar.configure(text=message)
@@ -446,8 +442,10 @@ class BerichtsheftApp(ctk.CTk):
             self.update_status("Speichere Daten...")
             erfolg, nachricht = self.controller.speichere_bericht_daten(context)
             if erfolg:
+                berichtsheft_view = self.get_berichtsheft_view_reference()
+                if berichtsheft_view and berichtsheft_view.save_button:
+                    self.animation_manager.save_button_animation(berichtsheft_view.save_button)
                 self.update_status(nachricht)
-                # Ansicht neu laden, falls sie gerade angezeigt wird
                 if self.current_view and isinstance(self.current_view, LoadReportView):
                     self.current_view.on_show()
             else:
@@ -479,6 +477,7 @@ class BerichtsheftApp(ctk.CTk):
         self.bind("<Control-n>", self.clear_and_prepare_next_report)
         self.bind("<Control-l>", lambda event: self.show_view("load_report"))
         self.bind("<F1>", lambda event: self.show_view("help"))
+        self.bind("<F11>", self.animation_manager.toggle_fullscreen)
 
         self.bind("<Up>", self._navigate_loaded_reports)
         self.bind("<Down>", self._navigate_loaded_reports)
@@ -559,18 +558,10 @@ class BerichtsheftApp(ctk.CTk):
             self.update_status(f"Download-Seite für Version {version} geöffnet.")
 
     def get_berichtsheft_view_reference(self) -> 'BerichtsheftView':
-        """Gibt eine Referenz auf die Berichtsheft-Ansicht, auch wenn sie nicht aktiv ist."""
-        # ANPASSUNG: Erstellt die Ansicht, falls sie noch nicht existiert
+        """Gibt eine Referenz auf die Berichtsheft-Ansicht zurück, auch wenn sie nicht aktiv ist."""
         if "berichtsheft" not in self.views:
-             self.views["berichtsheft"] = self.view_classes["berichtsheft"](self.view_container, self)
-        
-        # Stellt sicher, dass wir eine Instanz haben, falls die Ansicht gerade nicht die `current_view` ist
-        if not isinstance(self.current_view, BerichtsheftView):
-            if "berichtsheft" not in self.views or not isinstance(self.views["berichtsheft"], BerichtsheftView):
-                 self.views["berichtsheft"] = self.view_classes["berichtsheft"](self.view_container, self)
-            return self.views["berichtsheft"]
-
-        return self.current_view
+            self.views["berichtsheft"] = self.view_classes["berichtsheft"](self.view_container, self)
+        return self.views["berichtsheft"]
 
 
     def reload_all_data(self) -> None:

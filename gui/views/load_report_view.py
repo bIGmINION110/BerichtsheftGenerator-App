@@ -5,6 +5,7 @@ Definiert die Ansicht zum Laden eines bestehenden Berichts.
 """
 import customtkinter as ctk
 import logging
+from tkinter import messagebox
 from typing import Dict, Any, List
 from ..widgets.accessible_widgets import AccessibleCTkButton
 from core import config
@@ -36,11 +37,27 @@ class LoadReportView(ctk.CTkFrame):
     def _create_widgets(self):
         """Erstellt die UI-Elemente der Ansicht."""
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1) # Eine zusätzliche Zeile für die Aktionen
+
+        # Frame für Aktionen wie "Alle löschen"
+        action_frame = ctk.CTkFrame(self)
+        action_frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="ew")
+        action_frame.grid_columnconfigure(0, weight=1)
+
+        AccessibleCTkButton(
+            action_frame,
+            text="Alle Berichte löschen",
+            fg_color=config.ERROR_COLOR,
+            hover_color=config.ERROR_HOVER_COLOR,
+            command=self._delete_all_reports,
+            accessible_text="Löscht alle gespeicherten Berichte nach einer Bestätigung.",
+            status_callback=self.app.update_status,
+            speak_callback=self.app.speak
+        ).pack(side="right", padx=10, pady=10)
 
         self.scroll_frame = ctk.CTkScrollableFrame(self, label_text="Gespeicherte Berichte")
-        self.scroll_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-
+        self.scroll_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        self.scroll_frame.grid_columnconfigure(0, weight=1)
 
     def _populate_report_list(self):
         """Füllt die Liste mit den verfügbaren Berichten."""
@@ -59,6 +76,10 @@ class LoadReportView(ctk.CTkFrame):
             frame = ctk.CTkFrame(self.scroll_frame)
             frame.pack(fill="x", padx=5, pady=5)
             frame.grid_columnconfigure(0, weight=1)
+            
+            # Wichtige Metadaten für die Tastaturnavigation speichern
+            frame.report_id = key
+            frame.report_data = report_data
             
             self.report_frames.append(frame)
 
@@ -139,6 +160,28 @@ class LoadReportView(ctk.CTkFrame):
         self.app.show_view("berichtsheft", run_on_show=False)
         
     def _delete_report(self, report_id: str):
-        """Löscht einen Bericht aus der Datenbank."""
-        if self.app.controller.delete_bericht(report_id):
-            self.on_show()
+        """Löscht einen Bericht aus der Datenbank mit einer Animation."""
+        if not messagebox.askyesno("Löschen bestätigen", f"Möchtest du den Bericht für ID '{report_id}' wirklich löschen?"):
+            return
+
+        frame_to_delete = next((f for f in self.report_frames if hasattr(f, 'report_id') and f.report_id == report_id), None)
+
+        def perform_delete():
+            if self.app.controller.delete_bericht(report_id):
+                self.on_show()  # Lädt die Liste neu
+            else:
+                messagebox.showerror("Fehler", "Bericht konnte nicht gelöscht werden.")
+
+        if frame_to_delete:
+            self.app.animation_manager.delete_animation(frame_to_delete, remove_callback=perform_delete)
+        else:
+            perform_delete()  # Fallback, falls Frame nicht gefunden wird
+
+    def _delete_all_reports(self):
+        """Löscht alle Berichte nach einer Bestätigung."""
+        if messagebox.askyesno("Alle Berichte löschen", "Bist du sicher, dass du ALLE gespeicherten Berichte unwiderruflich löschen möchtest?"):
+            if self.app.controller.loesche_alle_berichte():
+                messagebox.showinfo("Erfolg", "Alle Berichte wurden gelöscht.")
+                self.on_show()
+            else:
+                messagebox.showerror("Fehler", "Ein Fehler ist beim Löschen der Berichte aufgetreten.")

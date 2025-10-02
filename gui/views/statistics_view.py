@@ -8,7 +8,7 @@ from tkinter import messagebox
 from collections import defaultdict
 from typing import Dict, Any
 import logging
-import os  # NEUER IMPORT
+import os
 
 from ..widgets.accessible_widgets import AccessibleCTkButton
 from core import config 
@@ -17,7 +17,7 @@ try:
     import matplotlib
     matplotlib.use('TkAgg')
     import matplotlib.pyplot as plt
-    from matplotlib.font_manager import fontManager # NEUER IMPORT
+    from matplotlib.font_manager import fontManager
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
@@ -35,7 +35,6 @@ class StatisticsView(ctk.CTkFrame):
         
         self.bar_chart_canvas = None
 
-        # --- VERBESSERUNG: Schriftart für Matplotlib plattformunabhängig festlegen ---
         if MATPLOTLIB_AVAILABLE:
             self._setup_matplotlib_font()
 
@@ -119,7 +118,7 @@ class StatisticsView(ctk.CTkFrame):
     def _clear_stats(self):
         """Löscht alle Berichtsdaten nach Bestätigung."""
         if messagebox.askyesno("Bestätigen", "Möchtest du wirklich alle gesammelten Berichtsdaten unwiderruflich löschen?"):
-            if self.data_manager.loesche_statistiken():
+            if self.data_manager.loesche_alle_berichte():
                 messagebox.showinfo("Erfolg", "Alle Statistiken wurden zurückgesetzt.")
                 self._load_and_display_stats()
             else:
@@ -209,8 +208,8 @@ class StatisticsView(ctk.CTkFrame):
 
         # Zweite Zeile: Tage-Zusammenfassung
         ctk.CTkLabel(self.summary_frame, text=f"Urlaubstage\n{tage_pro_typ.get('Urlaub', 0)}", font=ctk.CTkFont(size=16, weight="bold")).grid(row=1, column=0, pady=5)
-        ctk.CTkLabel(self.summary_frame, text=f"Krankheitstage\n{tage_pro_typ.get('Krank', 0)}", font=ctk.CTkFont(size=16, weight="bold")).grid(row=1, column=1, pady=5)
-        ctk.CTkLabel(self.summary_frame, text=f"Feiertage\n{tage_pro_typ.get('Feiertag', 0)}", font=ctk.CTkFont(size=16, weight="bold")).grid(row=1, column=2, pady=5)
+        ctk.CTkLabel(self.summary_frame, text=f"Krankheitstage\n{tage_pro_typ.get('Krank', 0)}", font=ctk.CTkFont(size=16, weight="bold")).grid(row=1, column=2, pady=5)
+        ctk.CTkLabel(self.summary_frame, text=f"Feiertage\n{tage_pro_typ.get('Feiertag', 0)}", font=ctk.CTkFont(size=16, weight="bold")).grid(row=1, column=3, pady=5)
 
 
     def _create_pie_chart(self, data: Dict, title: str):

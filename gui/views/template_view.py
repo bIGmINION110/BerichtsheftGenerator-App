@@ -63,6 +63,7 @@ class TemplateView(ctk.CTkFrame):
 
         self.scroll_frame = ctk.CTkScrollableFrame(self, label_text="Gespeicherte Vorlagen")
         self.scroll_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        self.scroll_frame.grid_columnconfigure(0, weight=1)
 
     def _populate_templates(self):
         """Füllt die Scroll-Liste mit den gespeicherten Vorlagen."""
@@ -72,12 +73,14 @@ class TemplateView(ctk.CTkFrame):
         if not self.templates:
             ctk.CTkLabel(self.scroll_frame, text="Noch keine Vorlagen gespeichert.").pack(pady=10)
             return
-            
+        
+        template_frames = []
         for template_text in self.templates:
-            # Der Frame ist nur noch ein Container und nicht mehr selbst fokussierbar.
             frame = ctk.CTkFrame(self.scroll_frame)
             frame.pack(fill="x", padx=5, pady=5)
             frame.grid_columnconfigure(0, weight=1)
+            frame.template_text = template_text # Text für den Löschvorgang speichern
+            template_frames.append(frame)
             
             ctk.CTkLabel(frame, text=template_text, wraplength=350, justify="left").grid(row=0, column=0, padx=10, pady=5, sticky="w")
             
@@ -105,10 +108,9 @@ class TemplateView(ctk.CTkFrame):
                 speak_callback=self.app.speak
             )
             delete_button.grid(row=0, column=2, padx=5, pady=5)
-            
-            # KORREKTUR: Die <Delete>-Tastenfunktionalität wird an den "Löschen"-Button gebunden,
-            # da der Frame selbst nicht mehr fokussiert werden kann.
             delete_button.bind("<Delete>", lambda e, t=template_text: self._delete_template(t))
+        
+        self.app.animation_manager.staggered_loading(self.scroll_frame, template_frames)
 
     def _add_template(self):
         """Fügt eine neue Vorlage hinzu."""
@@ -125,12 +127,22 @@ class TemplateView(ctk.CTkFrame):
             messagebox.showinfo("Vorlage existiert", "Diese Vorlage ist bereits gespeichert.")
 
     def _delete_template(self, template_to_delete: str):
-        """Löscht eine ausgewählte Vorlage."""
+        """Löscht eine ausgewählte Vorlage mit Animation."""
         if messagebox.askyesno("Löschen bestätigen", f"Möchtest du die Vorlage wirklich löschen?\n\n'{template_to_delete}'"):
-            self.templates.remove(template_to_delete)
-            self._save_templates()
-            self._populate_templates()
-            self.app.speak(f"Vorlage '{template_to_delete[:30]}...' gelöscht.")
+            
+            frame_to_delete = next((f for f in self.scroll_frame.winfo_children() if isinstance(f, ctk.CTkFrame) and getattr(f, 'template_text', '') == template_to_delete), None)
+
+            def perform_delete():
+                self.templates.remove(template_to_delete)
+                self._save_templates()
+                self._populate_templates()
+                self.app.speak(f"Vorlage '{template_to_delete[:30]}...' gelöscht.")
+
+            if frame_to_delete:
+                self.app.animation_manager.delete_animation(frame_to_delete, remove_callback=perform_delete)
+            else:
+                perform_delete()
+
 
     def _insert_template(self, template_text: str):
         """Fügt den Text in das aktive Textfeld der Berichtsheft-Ansicht ein."""

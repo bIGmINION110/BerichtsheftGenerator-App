@@ -163,3 +163,8 @@ class AppController:
     def delete_bericht(self, bericht_id: str) -> bool:
         """Löscht einen Bericht aus der Datenbank."""
         return self.data_manager.loesche_bericht(bericht_id)
+
+    def loesche_alle_berichte(self) -> bool:
+        """Löscht alle Berichte und deren Einträge aus der Datenbank."""
+        logger.info("Anfrage zum Löschen aller Berichte erhalten.")
+        return self.data_manager.loesche_alle_berichte()

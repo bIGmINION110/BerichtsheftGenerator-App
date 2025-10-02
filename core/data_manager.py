@@ -168,16 +168,16 @@ class DataManager:
             logger.error(f"Fehler beim Speichern der Vorlagen: {e}", exc_info=True)
             return False
             
-    def loesche_statistiken(self) -> bool:
+    def loesche_alle_berichte(self) -> bool:
         """Löscht alle Berichte und Tagebucheinträge aus der Datenbank."""
         try:
             with self.db.transaction() as cursor:
                 cursor.execute("DELETE FROM tagebucheintraege;")
                 cursor.execute("DELETE FROM berichte;")
-            logger.info("Alle Berichtsdaten für Statistiken wurden zurückgesetzt.")
+            logger.info("Alle Berichtsdaten wurden aus der Datenbank gelöscht.")
             return True
         except self.db._conn.Error as e:
-            logger.error(f"Fehler beim Zurücksetzen der Statistiken: {e}", exc_info=True)
+            logger.error(f"Fehler beim Löschen aller Berichte: {e}", exc_info=True)
             return False
             
     def importiere_berichte(self, berichte_daten: Dict[str, Any]) -> bool:
