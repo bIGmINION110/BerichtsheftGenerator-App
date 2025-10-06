@@ -174,9 +174,7 @@ class BerichtsheftView(ctk.CTkFrame):
                 focus_color=config.FOCUS_COLOR,
                 accessible_text=f"Tätigkeiten für {tag_name}. Pfeiltasten hoch/runter lesen die aktuelle Zeile.",
                 status_callback=self.app.update_status,
-                speak_callback=self.app.speak,
-                # --- KORREKTUR: Übergebe die globale grammar_tool-Instanz ---
-                grammar_tool=self.app.grammar_tool
+                speak_callback=self.app.speak
             )
             taetigkeiten_text.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
             self.tages_widgets.append({"typ": typ_var, "stunden": stunden_var, "taetigkeiten": taetigkeiten_text})

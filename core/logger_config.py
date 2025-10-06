@@ -52,9 +52,10 @@ def setup_logging() -> None:
     logger.addHandler(console_handler)
 
     # --- WICHTIG: Log-Level für geschwätzige Bibliotheken anpassen ---
-    # Setzt das Logging für Matplotlib und Pillow auf WARNING, um DEBUG-Spam zu vermeiden.
+    # Setzt das Logging für Matplotlib, Pillow und Urllib3 auf WARNING, um DEBUG-Spam zu vermeiden.
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
     logging.getLogger('PIL').setLevel(logging.WARNING)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
     # --- Ende der Anpassung ---
 
     logging.info("Logging wurde erfolgreich initialisiert.")

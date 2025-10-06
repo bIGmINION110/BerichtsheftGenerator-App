@@ -80,8 +80,8 @@ class BerichtsheftApp(ctk.CTk):
         self.speaker = self._initialize_speaker()
         self.screen_reader_active = self.speaker is not None
         
-        # --- KORREKTUR: LanguageTool zentral initialisieren ---
-        self.grammar_tool = self._initialize_grammar_tool()
+        # Das grammar_tool wird nun in der Textbox selbst verwaltet
+        self.grammar_tool = None
         
         self.logo_image: Optional[ctk.CTkImage] = None
         self.views: Dict[str, ctk.CTkFrame] = {}
@@ -103,13 +103,9 @@ class BerichtsheftApp(ctk.CTk):
         logger.info("GUI erfolgreich initialisiert.")
 
     def on_close(self) -> None:
-        """Sicherstellen, dass die DB-Verbindung und der LanguageTool-Server beim Beenden geschlossen werden."""
+        """Sicherstellen, dass die DB-Verbindung beim Beenden geschlossen wird."""
         logger.info("Anwendung wird beendet.")
         self.db.close()
-        # --- KORREKTUR: LanguageTool-Server schließen ---
-        if self.grammar_tool:
-            self.grammar_tool.close()
-            logger.info("LanguageTool-Server geschlossen.")
         self.destroy()
 
     def _initialize_speaker(self) -> Optional[Any]:
@@ -122,8 +118,7 @@ class BerichtsheftApp(ctk.CTk):
         
         try:
             speaker = outputs.auto.Auto()
-            # --- KORREKTUR: Sicherere Prüfung, ob ein Screenreader aktiv ist ---
-            if speaker and speaker.is_active():
+            if speaker and hasattr(speaker, 'is_active') and speaker.is_active():
                 logging.info(f"Aktiver Screenreader '{speaker.name}' erkannt. Sprachausgabe wird aktiviert.")
                 return speaker
             else:
@@ -132,21 +127,6 @@ class BerichtsheftApp(ctk.CTk):
         except Exception as e:
             logging.warning(f"Fehler bei der Initialisierung des Screenreaders: {e}")
             return None
-            
-    def _initialize_grammar_tool(self) -> Optional[Any]:
-        """Initialisiert eine globale Instanz des LanguageTools."""
-        if LANGUAGE_TOOL_AVAILABLE:
-            try:
-                logger.info("Initialisiere LanguageTool... Dies kann einen Moment dauern.")
-                # Erwäge das Hinzufügen einer Konfiguration für die Sprache
-                tool = language_tool_python.LanguageTool('de-DE')
-                logger.info("LanguageTool erfolgreich initialisiert.")
-                return tool
-            except Exception as e:
-                logger.error(f"Fehler beim Initialisieren des LanguageTool: {e}", exc_info=True)
-                return None
-        logger.info("Bibliothek 'language_tool_python' nicht verfügbar. Grammatikprüfung deaktiviert.")
-        return None
 
     def _welcome_message(self):
         """Gibt eine Willkommensnachricht aus, falls ein Screenreader aktiv ist."""
@@ -514,8 +494,8 @@ class BerichtsheftApp(ctk.CTk):
         self.bind("<space>", self._action_on_loaded_report)
         self.bind("<Delete>", self._action_on_loaded_report)
         
-        view_keys = ["1", "3", "4", "5", "6", "7"]
-        view_names = ["berichtsheft", "import", "templates", "statistics", "backup", "settings"]
+        view_keys = ["1", "2", "3", "4", "5", "6", "7"]
+        view_names = ["berichtsheft", "calendar", "import", "templates", "statistics", "backup", "settings"]
         for i, key in enumerate(view_keys):
             if i < len(view_names):
                 self.bind(f"<Control-KeyPress-{key}>", lambda event, v=view_names[i]: self.show_view(v))
@@ -602,4 +582,3 @@ class BerichtsheftApp(ctk.CTk):
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
-        

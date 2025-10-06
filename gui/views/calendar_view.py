@@ -5,7 +5,7 @@ Definiert die neue Kalender-Ansicht zur Übersicht der Berichte.
 """
 import customtkinter as ctk
 from tkinter import messagebox
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import logging
 
 from core import config
@@ -135,4 +135,3 @@ class CalendarView(ctk.CTkFrame):
         except Exception as e:
             logger.error(f"Fehler bei der Auswahl eines Datums im Kalender: {e}", exc_info=True)
             self.app.update_status("Fehler beim Verarbeiten des Datums.")
-            

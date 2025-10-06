@@ -10,6 +10,8 @@ from typing import Callable, Any, Optional
 from datetime import datetime, timedelta
 import re
 import os
+import threading
+import queue
 
 from core import config
 
@@ -18,16 +20,12 @@ try:
 except ImportError:
     SpellChecker = None
 
-# LANGUAGE_TOOL_AVAILABLE wird jetzt in app.py geprüft
 LANGUAGE_TOOL_AVAILABLE = True
 try:
     import language_tool_python
 except ImportError:
     LANGUAGE_TOOL_AVAILABLE = False
 
-
-# HINWEIS: Der direkte Import von 'accessible_output2' wird hier entfernt.
-# Die Sprachausgabe wird zentral über die Hauptanwendung gesteuert.
 
 class AccessibleBase:
     """Basisklasse, um Barrierefreiheitsfunktionen zu teilen."""
@@ -331,7 +329,7 @@ class AccessibleCTkSwitch(ctk.CTkSwitch, AccessibleBase):
 
 class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
     """Erweiterte CTkTextbox, die die aktuelle Zeile für Screenreader vorliest."""
-    def __init__(self, master: Any, accessible_text: str, status_callback: Callable[[str], None], speak_callback: Callable[[str, bool], None], grammar_tool: Optional[Any] = None, **kwargs):
+    def __init__(self, master: Any, accessible_text: str, status_callback: Callable[[str], None], speak_callback: Callable[[str, bool], None], **kwargs):
         focus_color = kwargs.pop("focus_color", None)
         super().__init__(master, **kwargs)
         self._initialize_accessibility(accessible_text, status_callback, speak_callback)
@@ -343,8 +341,15 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
         self.bind("<Control-BackSpace>", self._delete_word_backwards)
         self.bind("<Control-Delete>", self._delete_word_forwards)
         
-        # --- KORREKTUR: grammar_tool wird von außen übergeben ---
-        self.grammar_tool = grammar_tool
+        self.check_queue = queue.Queue()
+        self.result_queue = queue.Queue()
+        self.checker_thread_active = True
+        self.checker_thread = threading.Thread(target=self._grammar_checker_worker, daemon=True)
+        self.checker_thread.start()
+        
+        self.last_matches = []
+
+        self.after(100, self._process_check_results)
 
         if focus_color:
             self._focus_color = focus_color
@@ -353,10 +358,32 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
             self.bind("<FocusIn>", self._on_get_focus_border, add="+")
             self.bind("<FocusOut>", self._on_lose_focus_border, add="+")
             
-        if SpellChecker or self.grammar_tool:
+        if SpellChecker or LANGUAGE_TOOL_AVAILABLE:
             self._initialize_spell_checker()
             self.bind("<Button-3>", self._show_correction_menu)
             self.bind("<Menu>", self._show_correction_menu)
+
+    def _grammar_checker_worker(self):
+        """Worker-Thread, der die Grammatikprüfungen durchführt."""
+        tool = None
+        if LANGUAGE_TOOL_AVAILABLE:
+            try:
+                tool = language_tool_python.LanguageTool('de-DE')
+            except Exception:
+                pass
+
+        while self.checker_thread_active:
+            try:
+                text = self.check_queue.get(timeout=1)
+                if text is None:
+                    break
+                if tool:
+                    matches = tool.check(text)
+                    self.result_queue.put(matches)
+            except queue.Empty:
+                continue
+        if tool:
+            tool.close()
 
     def _on_textbox_focus_in(self, event: Any = None):
         self._speak_and_update_status(event)
@@ -461,7 +488,6 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
     def _initialize_spell_checker(self):
         """Initialisiert die Rechtschreib- und Grammatikprüfung."""
         self.spell_checker = SpellChecker(language='de') if SpellChecker else None
-        # self.grammar_tool wird jetzt von außen gesetzt
         
         self.tag_config("misspelled", background=config.SPELLCHECK_ERROR_COLOR, underline=True)
         self.tag_config("grammar_error", background=config.GRAMMAR_ERROR_COLOR, underline=True)
@@ -496,67 +522,100 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
                         self.tag_add("misspelled", pos, end_index)
                         start_index = end_index
 
-        if self.grammar_tool:
-            matches = self.grammar_tool.check(text)
-            for match in matches:
+        if LANGUAGE_TOOL_AVAILABLE:
+            self.check_queue.put(text)
+    
+    def _process_check_results(self):
+        """Verarbeitet die Ergebnisse aus dem Worker-Thread im Haupt-Thread."""
+        try:
+            self.last_matches = self.result_queue.get_nowait()
+            for match in self.last_matches:
                 if match.ruleId == 'GERMAN_SPELLER_RULE':
                     continue
-                
                 start_pos = f"1.0 + {match.offset} chars"
                 end_pos = f"1.0 + {match.offset + match.errorLength} chars"
                 self.tag_add("grammar_error", start_pos, end_pos)
+        except queue.Empty:
+            pass
+        finally:
+            self.after(100, self._process_check_results)
 
     def _show_correction_menu(self, event: Any):
         """Zeigt ein Kontextmenü mit Korrekturvorschlägen an."""
         self.focus_set()
 
-        # Für die Tastatur (event.x, event.y sind 0) die aktuelle Cursor-Position verwenden
-        if event.keysym == 'Menu':
-            cursor_index = self.index(tk.INSERT)
-        else: # Für die Maus die Klick-Position verwenden
-            cursor_index = self.index(f"@{event.x},{event.y}")
+        # KORREKTUR: Robuste Bestimmung des Cursor-Index
+        is_key_event = hasattr(event, 'keysym') and event.keysym == 'Menu'
+        cursor_index = self.index(tk.INSERT) if is_key_event else self.index(f"@{event.x},{event.y}")
 
         tags = self.tag_names(cursor_index)
         is_misspelled = "misspelled" in tags
         is_grammar_error = "grammar_error" in tags
 
         if not is_misspelled and not is_grammar_error:
-            return
+            return "break"
 
         tag_name = "misspelled" if is_misspelled else "grammar_error"
-        word_range = self.tag_prevrange(tag_name, cursor_index + "+1c")
-        if not word_range:
-            return
-            
-        start, end = word_range
-        error_text = self.get(start, end)
         
+        # KORREKTUR: Zuverlässigeres Finden des Fehlerbereichs
+        # Finde den Anfang und das Ende des Tags, in dem sich der Cursor befindet
+        try:
+            tag_range = self.tag_ranges(tag_name)
+            found_range = None
+            for i in range(0, len(tag_range), 2):
+                start, end = tag_range[i], tag_range[i+1]
+                if self.compare(cursor_index, ">=", start) and self.compare(cursor_index, "<=", end):
+                    found_range = (start, end)
+                    break
+            if not found_range:
+                return "break"
+            start, end = found_range
+        except tk.TclError:
+            return "break"
+            
+        error_text = self.get(start, end)
         suggestions = []
-        if self.grammar_tool and is_grammar_error:
-            text = self.get("1.0", "end-1c")
-            matches = self.grammar_tool.check(text)
-            for match in matches:
-                match_start_index = self.index(f"1.0 + {match.offset} chars")
-                if self.compare(match_start_index, "==", start):
+
+        if is_grammar_error:
+            # KORREKTUR: Zuverlässigeres Finden des passenden Grammatikfehlers
+            start_offset = int(str(start).split('.')[1])
+            for match in self.last_matches:
+                if match.offset <= start_offset < (match.offset + match.errorLength):
                     suggestions = match.replacements
                     break
         elif is_misspelled and self.spell_checker:
-            # --- KORREKTUR: Prüfen, ob candidates() None zurückgibt ---
             candidates = self.spell_checker.candidates(error_text)
             if candidates:
                 suggestions = list(candidates)
 
         if not suggestions:
-            return
+            return "break"
 
         menu = tk.Menu(self, tearoff=0, font=config.FONT_NORMAL)
         for suggestion in suggestions[:5]:
             menu.add_command(label=suggestion, command=lambda s=suggestion: self._apply_correction(start, end, s))
         
-        menu.tk_popup(event.x_root, event.y_root)
+        # KORREKTUR: Position für das Menü bestimmen
+        if is_key_event:
+            bbox = self.bbox(cursor_index)
+            if bbox:
+                menu_x, menu_y = self.winfo_rootx() + bbox[0], self.winfo_rooty() + bbox[1] + bbox[3]
+            else:
+                menu_x, menu_y = self.winfo_rootx() + self.winfo_width() // 2, self.winfo_rooty() + self.winfo_height() // 2
+        else:
+            menu_x, menu_y = event.x_root, event.y_root
+
+        menu.tk_popup(menu_x, menu_y)
+        return "break"
 
     def _apply_correction(self, start: str, end: str, suggestion: str):
         """Wendet die ausgewählte Korrektur an."""
         self.delete(start, end)
         self.insert(start, suggestion)
         self._schedule_spell_check()
+        
+    def destroy(self):
+        """Stellt sicher, dass der Worker-Thread beim Zerstören des Widgets beendet wird."""
+        self.checker_thread_active = False
+        self.check_queue.put(None) # Signal zum Beenden an den Thread senden
+        super().destroy()
