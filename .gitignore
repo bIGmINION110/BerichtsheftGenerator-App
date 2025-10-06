@@ -7,6 +7,7 @@ Ausbildungsnachweise/
 # Die Datenbank sollte nicht ignoriert werden, wenn sie mitgeliefert wird.
 # Wenn sie nur lokal erstellt wird, sollte sie hier rein. Vorerst auskommentiert.
 data/
+tests/
 
 exe_generator.spec
 
