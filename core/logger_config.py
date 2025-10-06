@@ -10,7 +10,7 @@ from logging.handlers import RotatingFileHandler
 from core import config
 
 # Definiert den Speicherort für die Log-Dateien
-LOG_DATEI = os.path.join(config.LOG_ORDNER, "berichtsheft_generator.log")
+LOG_DATEI = os.path.join(config.LOG_FOLDER, "berichtsheft_generator.log")
 
 def setup_logging() -> None:
     """
@@ -23,7 +23,7 @@ def setup_logging() -> None:
     - Reduziert die Ausführlichkeit von Drittanbieter-Bibliotheken.
     """
     # Sicherstellen, dass der Log-Ordner existiert
-    os.makedirs(config.LOG_ORDNER, exist_ok=True)
+    os.makedirs(config.LOG_FOLDER, exist_ok=True)
 
     # Ein einheitliches Format für alle Log-Nachrichten definieren
     formatter = logging.Formatter(

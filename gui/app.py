@@ -6,7 +6,7 @@ Dient als Controller, der die Ansichten verwaltet und die Hauptlogik bereitstell
 """
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, Optional
 import logging
@@ -27,6 +27,13 @@ except ImportError:
     outputs = None
     ACCESSIBLE_OUTPUT_AVAILABLE = False
 
+try:
+    import language_tool_python
+    LANGUAGE_TOOL_AVAILABLE = True
+except ImportError:
+    language_tool_python = None
+    LANGUAGE_TOOL_AVAILABLE = False
+
 
 from core import config
 from db.database import Database
@@ -42,6 +49,7 @@ from gui.views.backup_view import BackupView
 from gui.views.import_view import ImportView
 from gui.views.settings_view import SettingsView
 from gui.views.help_view import HelpView
+from gui.views.calendar_view import CalendarView
 from .widgets.accessible_widgets import AccessibleCTkButton, AccessibleCTkSwitch
 from gui.animation_manager import AnimationManager
 from services.update_service import UpdateService
@@ -61,7 +69,7 @@ class BerichtsheftApp(ctk.CTk):
         config.initialize_fonts()
 
         migrations_path = os.path.join(config.BASE_DIR, "migrations")
-        self.db = Database(config.DATENBANK_DATEI, migrations_path)
+        self.db = Database(config.DATABASE_FILE, migrations_path)
         self.db.connect()
         self.db.run_migrations()
 
@@ -71,6 +79,9 @@ class BerichtsheftApp(ctk.CTk):
         
         self.speaker = self._initialize_speaker()
         self.screen_reader_active = self.speaker is not None
+        
+        # --- KORREKTUR: LanguageTool zentral initialisieren ---
+        self.grammar_tool = self._initialize_grammar_tool()
         
         self.logo_image: Optional[ctk.CTkImage] = None
         self.views: Dict[str, ctk.CTkFrame] = {}
@@ -92,9 +103,13 @@ class BerichtsheftApp(ctk.CTk):
         logger.info("GUI erfolgreich initialisiert.")
 
     def on_close(self) -> None:
-        """Sicherstellen, dass die DB-Verbindung beim Beenden geschlossen wird."""
-        logger.info("Anwendung wird beendet. Schließe Datenbankverbindung.")
+        """Sicherstellen, dass die DB-Verbindung und der LanguageTool-Server beim Beenden geschlossen werden."""
+        logger.info("Anwendung wird beendet.")
         self.db.close()
+        # --- KORREKTUR: LanguageTool-Server schließen ---
+        if self.grammar_tool:
+            self.grammar_tool.close()
+            logger.info("LanguageTool-Server geschlossen.")
         self.destroy()
 
     def _initialize_speaker(self) -> Optional[Any]:
@@ -106,13 +121,9 @@ class BerichtsheftApp(ctk.CTk):
             return None
         
         try:
-            try:
-                speaker = outputs.nvda.NVDA()
-                speaker == outputs.jaws.Jaws()
-            except NameError as e:
-                logging.info(str(e) + " konnte nicht gefunden werden!")
-                
-            if speaker.is_active():
+            speaker = outputs.auto.Auto()
+            # --- KORREKTUR: Sicherere Prüfung, ob ein Screenreader aktiv ist ---
+            if speaker and speaker.is_active():
                 logging.info(f"Aktiver Screenreader '{speaker.name}' erkannt. Sprachausgabe wird aktiviert.")
                 return speaker
             else:
@@ -121,6 +132,21 @@ class BerichtsheftApp(ctk.CTk):
         except Exception as e:
             logging.warning(f"Fehler bei der Initialisierung des Screenreaders: {e}")
             return None
+            
+    def _initialize_grammar_tool(self) -> Optional[Any]:
+        """Initialisiert eine globale Instanz des LanguageTools."""
+        if LANGUAGE_TOOL_AVAILABLE:
+            try:
+                logger.info("Initialisiere LanguageTool... Dies kann einen Moment dauern.")
+                # Erwäge das Hinzufügen einer Konfiguration für die Sprache
+                tool = language_tool_python.LanguageTool('de-DE')
+                logger.info("LanguageTool erfolgreich initialisiert.")
+                return tool
+            except Exception as e:
+                logger.error(f"Fehler beim Initialisieren des LanguageTool: {e}", exc_info=True)
+                return None
+        logger.info("Bibliothek 'language_tool_python' nicht verfügbar. Grammatikprüfung deaktiviert.")
+        return None
 
     def _welcome_message(self):
         """Gibt eine Willkommensnachricht aus, falls ein Screenreader aktiv ist."""
@@ -141,9 +167,9 @@ class BerichtsheftApp(ctk.CTk):
         self.geometry(f"{start_width}x{start_height}+{x}+{y}")
         self.minsize(1200, 800)
         
-        if sys.platform == "win32" and os.path.exists(config.ICON_DATEI):
+        if sys.platform == "win32" and os.path.exists(config.ICON_FILE):
             try:
-                self.iconbitmap(config.ICON_DATEI)
+                self.iconbitmap(config.ICON_FILE)
             except tk.TclError:
                 logger.warning("Konnte .ico-Datei nicht laden. Überspringe.")
 
@@ -173,14 +199,15 @@ class BerichtsheftApp(ctk.CTk):
 
     def _create_sidebar_widgets(self) -> None:
         """Füllt die Seitenleiste mit Logo, Titel und Navigations-Buttons."""
-        if Image and os.path.exists(config.LOGO_DATEI):
-            self.logo_image = ctk.CTkImage(Image.open(config.LOGO_DATEI), size=(35, 35))
-            ctk.CTkLabel(self.sidebar_frame, image=self.logo_image, text=config.APP_NAME, font=ctk.CTkFont(size=24, weight="bold"), compound="left", padx=20).grid(row=0, column=0, padx=20, pady=25)
+        if Image and os.path.exists(config.LOGO_FILE):
+            self.logo_image = ctk.CTkImage(Image.open(config.LOGO_FILE), size=(35, 35))
+            ctk.CTkLabel(self.sidebar_frame, image=self.logo_image, text=config.APP_NAME, font=ctk.CTkFont(size=20, weight="bold"), compound="left", padx=20).grid(row=0, column=0, padx=20, pady=25, sticky="ew")
         
         buttons_to_create = {
             "berichtsheft": ("Berichtsheft (Strg+1)", "Öffnet die Ansicht zum Erstellen und Bearbeiten von Berichten"),
             "load_report": ("Bericht laden (Strg+L)", "Öffnet die Ansicht zum Laden eines gespeicherten Berichts"),
-            "import": ("Berichte importieren (Strg+3)", "Öffnet die Ansicht zum Importieren von Word-Dateien"),
+            "calendar": ("Kalender", "Zeigt eine Kalenderübersicht aller Berichte"),
+            "import": ("Importieren (Strg+3)", "Öffnet die Ansicht zum Importieren von Word-Dateien"),
             "templates": ("Vorlagen (Strg+4)", "Öffnet die Vorlagenverwaltung"),
             "statistics": ("Statistiken (Strg+5)", "Zeigt Statistiken über alle Berichte an"),
             "backup": ("Backup (Strg+6)", "Öffnet die Ansicht für Datensicherung und Wiederherstellung"),
@@ -194,8 +221,9 @@ class BerichtsheftApp(ctk.CTk):
                                          hover_color=config.HOVER_COLOR,
                                          focus_color=config.FOCUS_COLOR,
                                          height=40,
+                                         corner_radius=8,
                                          accessible_text=acc_text, status_callback=self.update_status, speak_callback=self.speak)
-            button.grid(row=i + 1, column=0, padx=20, pady=12, sticky="ew")
+            button.grid(row=i + 1, column=0, padx=20, pady=8, sticky="ew")
             self.sidebar_buttons[view_name] = button
 
         # Hilfe-Button
@@ -204,9 +232,10 @@ class BerichtsheftApp(ctk.CTk):
                                          hover_color=config.HOVER_COLOR,
                                          focus_color=config.FOCUS_COLOR,
                                          height=40,
+                                         corner_radius=8,
                                          accessible_text="Öffnet die Hilfe-Ansicht mit allen Tastenkombinationen.", 
                                          status_callback=self.update_status, speak_callback=self.speak)
-        help_button.grid(row=len(buttons_to_create) + 1, column=0, padx=20, pady=12, sticky="ew")
+        help_button.grid(row=len(buttons_to_create) + 1, column=0, padx=20, pady=8, sticky="ew")
         self.sidebar_buttons["help"] = help_button
         
         # Unterer Bereich mit "Über", Ordner-Button und Theme-Switch
@@ -236,9 +265,8 @@ class BerichtsheftApp(ctk.CTk):
         about_text = (
             f"{config.APP_NAME}\n"
             f"Version: {config.VERSION}\n\n"
-            "Diese Anwendung dient der einfachen Erstellung und Verwaltung von Ausbildungsnachweisen der Zentrum für Berufliche Bildung (blista).\n\n"
+            "Diese Anwendung dient der einfachen Erstellung und Verwaltung von Ausbildungsnachweisen.\n\n"
             "Entwickelt von: bIGmINION110\n\n"
-            "Basiert auf Python: CustomTkinter, Tkinter, accessible-output2, altgraph, babel, contourpy, cycler, darkdetect, defusedxml, fonttools, fpdf2, kiwisolver, libloader, lxml, matplotlib, numpy, packaging, pillow, platform_utils, platformdirs, pyinstaller, pyinstaller-hooks-contrib, pyparsing, python-dateutil, python-docx, setuptools, six, tkcalendar, typing_extensions, pytest, pywin32, pywin32-ctypes, pefile, pyelftools und macholib.\n\n\n"
             f"Projektseite: {config.GITHUB_LINK}\n\n"
             f"© {datetime.now().year} bIGmINION110. Alle Rechte vorbehalten."
         )
@@ -249,6 +277,7 @@ class BerichtsheftApp(ctk.CTk):
         self.view_classes = {
             "berichtsheft": BerichtsheftView,
             "load_report": LoadReportView,
+            "calendar": CalendarView,
             "import": ImportView, 
             "templates": TemplateView,
             "statistics": StatisticsView,
@@ -275,8 +304,8 @@ class BerichtsheftApp(ctk.CTk):
         new_view = self.views[view_name]
         
         # Wenn die Ansicht bereits angezeigt wird, führe nur on_show aus (falls gewünscht)
-        if new_view == old_view and run_on_show:
-            if hasattr(new_view, 'on_show'):
+        if new_view == old_view:
+            if run_on_show and hasattr(new_view, 'on_show'):
                 new_view.on_show()
             new_view.lift()
             return
@@ -286,13 +315,11 @@ class BerichtsheftApp(ctk.CTk):
         if hasattr(new_view, 'on_show') and run_on_show:
             new_view.on_show()
 
-        # Animationen für den Wechsel
-        if old_view:
-            self.animation_manager.animated_tabs(old_view, new_view, mode="slide")
-        else:
-            # Erster Start
-            new_view.place(relx=0, rely=0, relwidth=1, relheight=1)
-            self.animation_manager.slide_in_view(new_view)
+        # Animation basierend auf der Einstellung
+        konfig = self.data_manager.lade_konfiguration()
+        animation_type = konfig.get("einstellungen", {}).get("animation_type", "slide")
+        
+        self.animation_manager.animated_tabs(old_view, new_view, mode=animation_type)
 
         readable_name = view_name.replace('_', ' ').title()
         self.update_status(f"Ansicht '{readable_name}' geladen.")
@@ -316,7 +343,7 @@ class BerichtsheftApp(ctk.CTk):
             self.views["statistics"].on_show()
 
     def _open_output_folder(self) -> None:
-        folder_path = config.AUSGABE_ORDNER
+        folder_path = config.OUTPUT_FOLDER
         try:
             os.makedirs(folder_path, exist_ok=True)
             
@@ -343,7 +370,9 @@ class BerichtsheftApp(ctk.CTk):
 
     def speichere_einstellungen(self, neue_einstellungen: Dict[str, Any]):
         konfig = self.data_manager.lade_konfiguration()
-        konfig["einstellungen"] = neue_einstellungen
+        if "einstellungen" not in konfig:
+            konfig["einstellungen"] = {}
+        konfig["einstellungen"].update(neue_einstellungen)
         if self.data_manager.speichere_konfiguration(konfig):
             self.update_status("Einstellungen erfolgreich gespeichert.")
             messagebox.showinfo("Gespeichert", "Die Einstellungen wurden erfolgreich gespeichert.")
@@ -419,7 +448,7 @@ class BerichtsheftApp(ctk.CTk):
         return "break"
 
     def _run_generation(self, context: Dict[str, Any], gewaehltes_format: str) -> None:
-        erfolg, nachricht = self.controller.erstelle_bericht(context, gewaehltes_format)
+        erfolg, nachricht = self.controller.create_report(context, gewaehltes_format)
         if erfolg:
             self.update_status(nachricht)
             self.get_berichtsheft_view_reference().on_show()
@@ -446,8 +475,8 @@ class BerichtsheftApp(ctk.CTk):
                 if berichtsheft_view and berichtsheft_view.save_button:
                     self.animation_manager.save_button_animation(berichtsheft_view.save_button)
                 self.update_status(nachricht)
-                if self.current_view and isinstance(self.current_view, LoadReportView):
-                    self.current_view.on_show()
+                if "calendar" in self.views and self.views["calendar"].winfo_viewable():
+                    self.views["calendar"].on_show()
             else:
                 self.update_status(nachricht)
                 messagebox.showerror("Fehler", nachricht)
@@ -573,3 +602,4 @@ class BerichtsheftApp(ctk.CTk):
         
         self.show_view("berichtsheft")
         self.update_status("Daten erfolgreich neu geladen.")
+        

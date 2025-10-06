@@ -55,7 +55,7 @@ class Database:
             logger.info("Datenbankverbindung geschlossen.")
 
     @contextmanager
-    def transaction(self) -> Generator[sqlite3.Cursor, None, None]:
+    def transaction(self, read_only: bool = False) -> Generator[sqlite3.Cursor, None, None]:
         """
         Stellt einen kontext-basierten Transaktionsmanager bereit.
         Führt bei Erfolg ein COMMIT durch, bei einer Exception ein ROLLBACK.
@@ -63,14 +63,23 @@ class Database:
         if not self._conn:
             raise sqlite3.OperationalError("Datenbankverbindung ist nicht geöffnet.")
         
+        # KORREKTUR: Prüfen, ob bereits eine Transaktion aktiv ist
+        in_transaction = self._conn.in_transaction
+        
         cursor = self._conn.cursor()
         try:
-            cursor.execute("BEGIN;")
+            if not in_transaction:
+                if read_only:
+                    cursor.execute("BEGIN DEFERRED;")
+                else:
+                    cursor.execute("BEGIN IMMEDIATE;")
             yield cursor
-            self._conn.commit()
+            if not in_transaction:
+                self._conn.commit()
         except Exception as e:
-            logger.error(f"Transaktion fehlgeschlagen. Führe Rollback durch. Fehler: {e}", exc_info=True)
-            self._conn.rollback()
+            if not in_transaction:
+                logger.error(f"Transaktion fehlgeschlagen. Führe Rollback durch. Fehler: {e}", exc_info=True)
+                self._conn.rollback()
             raise
 
     def run_migrations(self) -> None:

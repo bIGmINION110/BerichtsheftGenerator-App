@@ -60,7 +60,7 @@ class BerichtsheftLogik:
         return ausbildungsjahr
 
     @staticmethod
-    def generiere_dateinamen(ausbildungsjahr: int, kw: int, jahr: int, name_azubi: str, fortlauf_nr: int) -> str:
+    def generate_filename(ausbildungsjahr: int, kw: int, jahr: int, name_azubi: str, fortlauf_nr: int) -> str:
         """
         Generiert einen standardisierten Dateinamen für das Berichtsheft.
 

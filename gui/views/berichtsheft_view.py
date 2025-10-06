@@ -62,18 +62,18 @@ class BerichtsheftView(ctk.CTkFrame):
         self._create_action_buttons()
 
     def _create_kopfdaten_widgets(self, parent):
-        self.kopf_frame = ctk.CTkFrame(parent)
+        self.kopf_frame = ctk.CTkFrame(parent, corner_radius=8)
         
         self.kopf_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(self.kopf_frame, text="Persönliche Daten (Bitte in Einstellungen festlegen)", font=config.FONT_BOLD).grid(row=0, column=0, columnspan=2, pady=15, padx=15, sticky="w")
         
         ctk.CTkLabel(self.kopf_frame, text="Name des Azubis:", font=config.FONT_NORMAL).grid(row=1, column=0, sticky="w", padx=15, pady=10)
-        name_entry = AccessibleCTkEntry(self.kopf_frame, textvariable=self.name_var, font=config.FONT_NORMAL, height=35, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für den Namen des Auszubildenden.", status_callback=self.app.update_status, speak_callback=self.app.speak)
+        name_entry = AccessibleCTkEntry(self.kopf_frame, textvariable=self.name_var, font=config.FONT_NORMAL, height=35, corner_radius=8, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für den Namen des Auszubildenden.", status_callback=self.app.update_status, speak_callback=self.app.speak)
         name_entry.grid(row=1, column=1, sticky="ew", padx=15, pady=10)
         
         ctk.CTkLabel(self.kopf_frame, text="Start Ausbildung:", font=config.FONT_NORMAL).grid(row=2, column=0, sticky="w", padx=15, pady=10)
         self.start_entry = AccessibleCTkEntry(
-            self.kopf_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=config.FONT_NORMAL, height=35,
+            self.kopf_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=config.FONT_NORMAL, height=35, corner_radius=8,
             focus_color=config.FOCUS_COLOR, accessible_text="Startdatum der Ausbildung im Format Tag.Monat.Jahr.", 
             status_callback=self.app.update_status, speak_callback=self.app.speak)
         self.start_entry.grid(row=2, column=1, sticky="ew", padx=15, pady=10)
@@ -82,19 +82,19 @@ class BerichtsheftView(ctk.CTkFrame):
         self.startdatum_var.trace_add("write", self._validate_start_date)
 
         settings_button = AccessibleCTkButton(self.kopf_frame, text="Zu den Einstellungen", command=lambda: self.app.show_view("settings"), 
-                                              font=config.FONT_NORMAL, height=35, focus_color=config.FOCUS_COLOR,
+                                              font=config.FONT_NORMAL, height=35, corner_radius=8, focus_color=config.FOCUS_COLOR,
                                               accessible_text="Öffnet die Einstellungen, um Name und Startdatum festzulegen.",
                                               status_callback=self.app.update_status, speak_callback=self.app.speak)
         settings_button.grid(row=3, column=1, padx=15, pady=15, sticky="e")
 
 
     def _create_wochendaten_widgets(self, parent):
-        woche_frame = ctk.CTkFrame(parent)
+        woche_frame = ctk.CTkFrame(parent, corner_radius=8)
         woche_frame.grid(row=0, column=1, padx=(10, 0), pady=10, sticky="nsew")
         woche_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(woche_frame, text="Berichtsdaten", font=config.FONT_BOLD).grid(row=0, column=0, columnspan=3, pady=15, padx=15, sticky="w")
         ctk.CTkLabel(woche_frame, text="Bericht Nr.:", font=config.FONT_NORMAL).grid(row=1, column=0, sticky="w", padx=15, pady=10)
-        nummer_entry = AccessibleCTkEntry(woche_frame, textvariable=self.nummer_var, font=config.FONT_NORMAL, height=35, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für die fortlaufende Berichtsnummer. Pfeiltasten Hoch/Runter ändern den Wert.", status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='numeric')
+        nummer_entry = AccessibleCTkEntry(woche_frame, textvariable=self.nummer_var, font=config.FONT_NORMAL, height=35, corner_radius=8, focus_color=config.FOCUS_COLOR, accessible_text="Eingabefeld für die fortlaufende Berichtsnummer. Pfeiltasten Hoch/Runter ändern den Wert.", status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='numeric')
         nummer_entry.grid(row=1, column=1, columnspan=2, sticky="ew", padx=15, pady=10)
         ctk.CTkLabel(woche_frame, text="Woche wählen:", font=config.FONT_NORMAL).grid(row=2, column=0, sticky="w", padx=15, pady=10)
         
@@ -102,7 +102,7 @@ class BerichtsheftView(ctk.CTkFrame):
         kalender_container.grid(row=2, column=1, columnspan=2, sticky="ew", padx=15, pady=10)
         
         if DateEntry:
-            self.kalender = DateEntry(kalender_container, width=12, date_pattern='dd.mm.y', font=(config.UI_FONT_FAMILY, 14))
+            self.kalender = DateEntry(kalender_container, width=12, date_pattern='dd.mm.y', font=(config.UI_FONT_FAMILY, 14), borderwidth=2, relief="groove")
             self.kalender.pack(side="left")
             self.kalender.bind("<<DateEntrySelected>>", self._update_kw_from_kalender)
             self.kalender.bind("<FocusIn>", lambda e: self.app.update_status("Kalender zur Auswahl des Berichtsdatums. Pfeiltasten Hoch/Runter ändern den Tag."))
@@ -112,14 +112,14 @@ class BerichtsheftView(ctk.CTkFrame):
             ctk.CTkLabel(kalender_container, text="tkcalendar fehlt!", text_color="orange").pack(side="left")
 
         ctk.CTkLabel(kalender_container, text="KW:", font=config.FONT_NORMAL).pack(side="left", padx=(15, 5))
-        self.kw_entry = AccessibleCTkEntry(kalender_container, textvariable=self.kw_var, width=50, font=config.FONT_NORMAL, height=35,
+        self.kw_entry = AccessibleCTkEntry(kalender_container, textvariable=self.kw_var, width=50, font=config.FONT_NORMAL, height=35, corner_radius=8,
                                            focus_color=config.FOCUS_COLOR,
                                            accessible_text="Manuelle Eingabe der Kalenderwoche. Pfeiltasten Hoch/Runter ändern den Wert.",
                                            status_callback=self.app.update_status,
                                            speak_callback=self.app.speak, navigation_mode='numeric')
         self.kw_entry.pack(side="left")
         ctk.CTkLabel(kalender_container, text="Jahr:", font=config.FONT_NORMAL).pack(side="left", padx=(15, 5))
-        self.jahr_entry = AccessibleCTkEntry(kalender_container, textvariable=self.jahr_var, width=70, font=config.FONT_NORMAL, height=35,
+        self.jahr_entry = AccessibleCTkEntry(kalender_container, textvariable=self.jahr_var, width=70, font=config.FONT_NORMAL, height=35, corner_radius=8,
                                              focus_color=config.FOCUS_COLOR,
                                              accessible_text="Manuelle Eingabe des Jahres. Pfeiltasten Hoch/Runter ändern den Wert.",
                                              status_callback=self.app.update_status,
@@ -132,7 +132,7 @@ class BerichtsheftView(ctk.CTkFrame):
     def _create_daily_entry_tabs(self):
         self.tabview = ctk.CTkTabview(self, corner_radius=8, segmented_button_selected_color=config.ACCENT_COLOR, segmented_button_selected_hover_color=config.HOVER_COLOR)
         self.tabview.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
-        for i, tag_name in enumerate(config.WOCHENTAGE):
+        for i, tag_name in enumerate(config.DAYS_IN_WEEK):
             tab = self.tabview.add(tag_name)
             tab.grid_columnconfigure(0, weight=1)
             tab.grid_rowconfigure(1, weight=1)
@@ -141,7 +141,7 @@ class BerichtsheftView(ctk.CTkFrame):
             ctk.CTkLabel(header_frame, text="Typ:", font=config.FONT_NORMAL).pack(side="left", padx=(5, 5))
             typ_var = tk.StringVar(value="Betrieb")
             typ_combo = AccessibleCTkComboBox(header_frame, variable=typ_var, values=["Betrieb", "Schule", "Urlaub", "Krank", "Feiertag"], 
-                                              width=140, font=config.FONT_NORMAL, height=35,
+                                              width=140, font=config.FONT_NORMAL, height=35, corner_radius=8,
                                               focus_color=config.FOCUS_COLOR,
                                               accessible_text=f"Auswahl des Tätigkeitstyps für {tag_name}.",
                                               status_callback=self.app.update_status,
@@ -149,7 +149,7 @@ class BerichtsheftView(ctk.CTkFrame):
             typ_combo.pack(side="left", padx=(0, 25))
             ctk.CTkLabel(header_frame, text="Stunden:", font=config.FONT_NORMAL).pack(side="left", padx=(5, 5))
             stunden_var = tk.StringVar()
-            stunden_entry = AccessibleCTkEntry(master=header_frame, textvariable=stunden_var, width=80, font=config.FONT_NORMAL, height=35,
+            stunden_entry = AccessibleCTkEntry(master=header_frame, textvariable=stunden_var, width=80, font=config.FONT_NORMAL, height=35, corner_radius=8,
                                                focus_color=config.FOCUS_COLOR,
                                                accessible_text=f"Eingabefeld für die Stundenanzahl am {tag_name}. Pfeiltasten Hoch/Runter ändern die Zeit um 15 Minuten.", 
                                                status_callback=self.app.update_status,
@@ -174,7 +174,9 @@ class BerichtsheftView(ctk.CTkFrame):
                 focus_color=config.FOCUS_COLOR,
                 accessible_text=f"Tätigkeiten für {tag_name}. Pfeiltasten hoch/runter lesen die aktuelle Zeile.",
                 status_callback=self.app.update_status,
-                speak_callback=self.app.speak
+                speak_callback=self.app.speak,
+                # --- KORREKTUR: Übergebe die globale grammar_tool-Instanz ---
+                grammar_tool=self.app.grammar_tool
             )
             taetigkeiten_text.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
             self.tages_widgets.append({"typ": typ_var, "stunden": stunden_var, "taetigkeiten": taetigkeiten_text})
@@ -205,7 +207,7 @@ class BerichtsheftView(ctk.CTkFrame):
         
         # NEUER BUTTON: "Neuer Bericht"
         new_report_button = AccessibleCTkButton(button_container, text="Neuer Bericht (Strg+N)", command=self.app.clear_and_prepare_next_report,
-                                                font=config.FONT_BOLD, height=40,
+                                                font=config.FONT_BOLD, height=40, corner_radius=8,
                                                 focus_color=config.FOCUS_COLOR,
                                                 accessible_text="Leert die Eingabefelder und bereitet den nächsten Bericht vor.",
                                                 status_callback=self.app.update_status,
@@ -213,7 +215,7 @@ class BerichtsheftView(ctk.CTkFrame):
         new_report_button.pack(side="left", padx=(0, 10))
 
         self.save_button = AccessibleCTkButton(button_container, text="Speichern (Strg+S)", command=self.app.speichere_aktuellen_bericht, 
-                                              font=config.FONT_BOLD, height=40, 
+                                              font=config.FONT_BOLD, height=40, corner_radius=8, 
                                               fg_color="gray50", hover_color="gray60",
                                               focus_color=config.FOCUS_COLOR,
                                               accessible_text="Speichert die aktuellen Eingaben in der Datenbank.",
@@ -222,7 +224,7 @@ class BerichtsheftView(ctk.CTkFrame):
         self.save_button.pack(side="left", padx=(0, 10))
         
         self.create_report_button = AccessibleCTkButton(button_container, text="Erstellen (Strg+G)", command=self.app.erstelle_bericht, 
-                                                        font=config.FONT_BOLD, height=40, 
+                                                        font=config.FONT_BOLD, height=40, corner_radius=8, 
                                                         fg_color=config.ACCENT_COLOR, hover_color=config.HOVER_COLOR,
                                                         focus_color=config.FOCUS_COLOR,
                                                         accessible_text="Erstellt das Berichtsheft mit den eingegebenen Daten im ausgewählten Format.",
@@ -250,7 +252,7 @@ class BerichtsheftView(ctk.CTkFrame):
         default_stunden = einstellungen.get("default_stunden", {})
         default_typen = einstellungen.get("default_typen", {})
 
-        for i, tag_name in enumerate(config.WOCHENTAGE):
+        for i, tag_name in enumerate(config.DAYS_IN_WEEK):
             if i < len(self.tages_widgets):
                 widgets = self.tages_widgets[i]
                 default_typ = default_typen.get(tag_name, "Betrieb")
@@ -287,7 +289,7 @@ class BerichtsheftView(ctk.CTkFrame):
             self.jahr_var.set(str(jahr))
 
         # Erstelle ein Mapping von Wochentag zu den Widgets
-        widgets_by_day = {tag_name: self.tages_widgets[i] for i, tag_name in enumerate(config.WOCHENTAGE)}
+        widgets_by_day = {tag_name: self.tages_widgets[i] for i, tag_name in enumerate(config.DAYS_IN_WEEK)}
 
         for tag_data in report_data.get("tage_daten", []):
             tag_name = tag_data.get("tag_name")
@@ -362,7 +364,7 @@ class BerichtsheftView(ctk.CTkFrame):
         """Gibt die Textbox des aktuell ausgewählten Tabs zurück."""
         try:
             active_tab_name = self.tabview.get()
-            current_tab_index = config.WOCHENTAGE.index(active_tab_name)
+            current_tab_index = config.DAYS_IN_WEEK.index(active_tab_name)
             return self.tages_widgets[current_tab_index]["taetigkeiten"]
         except (ValueError, IndexError):
             return None
@@ -371,18 +373,18 @@ class BerichtsheftView(ctk.CTkFrame):
         """Wählt den nächsten Tab aus."""
         try:
             current_index = self.tabview.index(self.tabview.get())
-            next_index = (current_index + 1) % len(config.WOCHENTAGE)
-            next_tab_name = config.WOCHENTAGE[next_index]
+            next_index = (current_index + 1) % len(config.DAYS_IN_WEEK)
+            next_tab_name = config.DAYS_IN_WEEK[next_index]
             self.tabview.set(next_tab_name)
         except Exception:
-            self.tabview.set(config.WOCHENTAGE[0])
+            self.tabview.set(config.DAYS_IN_WEEK[0])
 
     def select_previous_tab(self):
         """Wählt den vorherigen Tab aus."""
         try:
             current_index = self.tabview.index(self.tabview.get())
-            prev_index = (current_index - 1 + len(config.WOCHENTAGE)) % len(config.WOCHENTAGE)
-            prev_tab_name = config.WOCHENTAGE[prev_index]
+            prev_index = (current_index - 1 + len(config.DAYS_IN_WEEK)) % len(config.DAYS_IN_WEEK)
+            prev_tab_name = config.DAYS_IN_WEEK[prev_index]
             self.tabview.set(prev_tab_name)
         except Exception:
-            self.tabview.set(config.WOCHENTAGE[0])
+            self.tabview.set(config.DAYS_IN_WEEK[0])

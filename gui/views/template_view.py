@@ -74,13 +74,11 @@ class TemplateView(ctk.CTkFrame):
             ctk.CTkLabel(self.scroll_frame, text="Noch keine Vorlagen gespeichert.").pack(pady=10)
             return
         
-        template_frames = []
         for template_text in self.templates:
             frame = ctk.CTkFrame(self.scroll_frame)
             frame.pack(fill="x", padx=5, pady=5)
             frame.grid_columnconfigure(0, weight=1)
             frame.template_text = template_text # Text für den Löschvorgang speichern
-            template_frames.append(frame)
             
             ctk.CTkLabel(frame, text=template_text, wraplength=350, justify="left").grid(row=0, column=0, padx=10, pady=5, sticky="w")
             
@@ -109,8 +107,6 @@ class TemplateView(ctk.CTkFrame):
             )
             delete_button.grid(row=0, column=2, padx=5, pady=5)
             delete_button.bind("<Delete>", lambda e, t=template_text: self._delete_template(t))
-        
-        self.app.animation_manager.staggered_loading(self.scroll_frame, template_frames)
 
     def _add_template(self):
         """Fügt eine neue Vorlage hinzu."""

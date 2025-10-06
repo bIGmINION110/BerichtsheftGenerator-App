@@ -57,7 +57,7 @@ class BaseGenerator(ABC):
             self._create_body()
             self._create_footer()
             
-            voller_pfad = os.path.join(config.AUSGABE_ORDNER, dateiname)
+            voller_pfad = os.path.join(config.OUTPUT_FOLDER, dateiname)
             
             # --- KORREKTUR: Sicherstellen, dass der Ausgabeordner existiert ---
             os.makedirs(os.path.dirname(voller_pfad), exist_ok=True)

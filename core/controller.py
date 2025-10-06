@@ -34,7 +34,7 @@ class AppController:
         self.importer_service = ImporterService()
         logger.info("AppController wurde initialisiert.")
 
-    def erstelle_bericht(self, context: Dict[str, Any], format: str) -> Tuple[bool, str]:
+    def create_report(self, context: Dict[str, Any], format: str) -> Tuple[bool, str]:
         """
         Validiert die Daten, erstellt den Bericht und speichert Konfiguration sowie Statistik.
 
@@ -52,7 +52,7 @@ class AppController:
             
             # 2. Dateinamen generieren
             logic = BerichtsheftLogik()
-            dateiname_basis = logic.generiere_dateinamen(
+            dateiname_basis = logic.generate_filename(
                 ausbildungsjahr=context["ausbildungsjahr"],
                 kw=context["kalenderwoche"],
                 jahr=context["jahr"],
@@ -124,40 +124,38 @@ class AppController:
         logger.info(f"Starte Datenimport von: {zip_path}")
         return self.backup_service.import_all_data_from_zip(zip_path)
         
-    def import_docx_berichte(self, file_paths: List[str]) -> Tuple[int, int, bool]:
+    def import_docx_berichte(self, file_paths: List[str]) -> Tuple[int, int, bool, Dict[str, str]]:
         """
-        Importiert Berichtsdaten aus einer Liste von DOCX-Dateien.
-
-        Args:
-            file_paths: Eine Liste von Pfaden zu den DOCX-Dateien.
-
-        Returns:
-            Ein Tupel (erfolgreich_importiert, fehlerhaft, erfolg_speichern).
+        Importiert Berichtsdaten aus DOCX-Dateien und gibt detailliertes Feedback.
         """
         logger.info(f"Starte DOCX-Import für {len(file_paths)} Dateien.")
         
         importierte_daten = {}
+        error_details = {}
         erfolgreich = 0
         fehlerhaft = 0
 
         for path in file_paths:
             logger.debug(f"Verarbeite Datei: {os.path.basename(path)}")
-            bericht_daten = self.importer_service.parse_docx(path)
+            bericht_daten, error_msg = self.importer_service.parse_docx(path)
+            
             if bericht_daten:
                 schluessel = f"{bericht_daten['jahr']}-{int(bericht_daten['kalenderwoche']):02d}"
                 if schluessel in importierte_daten:
-                    logger.warning(f"Doppelter Eintrag für Schlüssel '{schluessel}'. Bisheriger Bericht wird überschrieben durch Datei: {os.path.basename(path)}")
+                    logger.warning(f"Doppelter Eintrag für Schlüssel '{schluessel}'. Bisheriger Bericht wird überschrieben.")
+                    error_details[path] = f"Doppelter Bericht für KW {schluessel}, alter Eintrag wurde überschrieben."
                 importierte_daten[schluessel] = bericht_daten
                 erfolgreich += 1
             else:
                 fehlerhaft += 1
+                error_details[path] = error_msg or "Unbekannter Fehler."
         
         erfolg_speichern = False
         if importierte_daten:
             logger.info(f"Speichere {len(importierte_daten)} importierte Berichte.")
             erfolg_speichern = self.data_manager.importiere_berichte(importierte_daten)
         
-        return erfolgreich, fehlerhaft, erfolg_speichern
+        return erfolgreich, fehlerhaft, erfolg_speichern, error_details
 
 
     def delete_bericht(self, bericht_id: str) -> bool:

@@ -49,7 +49,7 @@ class StatisticsView(ctk.CTkFrame):
     def _setup_matplotlib_font(self):
         """Sucht die mitgelieferte Verdana-Schriftart und registriert sie für Matplotlib."""
         try:
-            font_path = os.path.join(config.FONTS_ORDNER, 'verdana.ttf')
+            font_path = os.path.join(config.FONTS_FOLDER, 'verdana.ttf')
             if os.path.exists(font_path):
                 fontManager.addfont(font_path)
                 plt.rcParams['font.family'] = 'Verdana'

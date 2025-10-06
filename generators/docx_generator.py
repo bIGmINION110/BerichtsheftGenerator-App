@@ -52,7 +52,7 @@ class DocxGenerator(BaseGenerator):
     def _create_body(self) -> None:
         """Erstellt den Hauptteil mit den täglichen Berichtsdaten als Textblöcke."""
         tage_daten = self.context.get("tage_daten", [])
-        for i, tag_name in enumerate(config.WOCHENTAGE):
+        for i, tag_name in enumerate(config.DAYS_IN_WEEK):
             tag_daten = tage_daten[i] if i < len(tage_daten) else {}
             
             # Info-Zeile für den Tag
@@ -67,7 +67,7 @@ class DocxGenerator(BaseGenerator):
                 if item.strip(): # Nur hinzufügen, wenn Zeile nicht leer ist
                     self.doc.add_paragraph(item.strip(), style='List Bullet')
 
-            if i < len(config.WOCHENTAGE) - 1:
+            if i < len(config.DAYS_IN_WEEK) - 1:
                 pass # oder  self.doc.add_paragraph() # Abstand zwischen den Tagen
 
 

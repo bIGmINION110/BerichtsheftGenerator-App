@@ -120,11 +120,11 @@ class DataManager:
         cursor.execute(delete_eintraege, (bericht_id,))
         
         # Neue Einträge einfügen
-        from core.config import WOCHENTAGE
+        from core.config import DAYS_IN_WEEK
         for i, tag_daten in enumerate(context['tage_daten']):
-            if i < len(WOCHENTAGE):
+            if i < len(DAYS_IN_WEEK):
                 cursor.execute(insert_eintrag, (
-                    bericht_id, WOCHENTAGE[i], tag_daten.get('typ', '-'),
+                    bericht_id, DAYS_IN_WEEK[i], tag_daten.get('typ', '-'),
                     tag_daten.get('stunden', '0:00'), tag_daten.get('taetigkeiten', '-')
                 ))
 

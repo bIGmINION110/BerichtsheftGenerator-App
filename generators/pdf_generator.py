@@ -31,9 +31,9 @@ class PdfGenerator(BaseGenerator):
         # --- KORREKTUR: Lade die Schriftarten aus dem 'assets/fonts'-Ordner ---
         try:
             # Pfad zur normalen Verdana-Schriftart
-            font_path = os.path.join(config.FONTS_ORDNER, 'verdana.ttf')
+            font_path = os.path.join(config.FONTS_FOLDER, 'verdana.ttf')
             # Pfad zur fetten Verdana-Schriftart
-            font_path_bold = os.path.join(config.FONTS_ORDNER, 'verdanab.ttf')
+            font_path_bold = os.path.join(config.FONTS_FOLDER, 'verdanab.ttf')
             
             self.pdf.add_font('Verdana', '', font_path, uni=True)
             self.pdf.add_font('Verdana', 'B', font_path_bold, uni=True)
@@ -65,7 +65,7 @@ class PdfGenerator(BaseGenerator):
     def _create_body(self) -> None:
         """Füllt das Dokument mit den täglichen Berichtsdaten als Textblöcke."""
         tage_daten = self.context.get("tage_daten", [])
-        for i, tag_name in enumerate(config.WOCHENTAGE):
+        for i, tag_name in enumerate(config.DAYS_IN_WEEK):
             tag_daten = tage_daten[i] if i < len(tage_daten) else {}
             
             # Info-Zeile für den Tag

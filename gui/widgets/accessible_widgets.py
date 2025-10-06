@@ -9,6 +9,22 @@ import tkinter as tk
 from typing import Callable, Any, Optional
 from datetime import datetime, timedelta
 import re
+import os
+
+from core import config
+
+try:
+    from spellchecker import SpellChecker
+except ImportError:
+    SpellChecker = None
+
+# LANGUAGE_TOOL_AVAILABLE wird jetzt in app.py geprüft
+LANGUAGE_TOOL_AVAILABLE = True
+try:
+    import language_tool_python
+except ImportError:
+    LANGUAGE_TOOL_AVAILABLE = False
+
 
 # HINWEIS: Der direkte Import von 'accessible_output2' wird hier entfernt.
 # Die Sprachausgabe wird zentral über die Hauptanwendung gesteuert.
@@ -315,7 +331,7 @@ class AccessibleCTkSwitch(ctk.CTkSwitch, AccessibleBase):
 
 class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
     """Erweiterte CTkTextbox, die die aktuelle Zeile für Screenreader vorliest."""
-    def __init__(self, master: Any, accessible_text: str, status_callback: Callable[[str], None], speak_callback: Callable[[str, bool], None], **kwargs):
+    def __init__(self, master: Any, accessible_text: str, status_callback: Callable[[str], None], speak_callback: Callable[[str, bool], None], grammar_tool: Optional[Any] = None, **kwargs):
         focus_color = kwargs.pop("focus_color", None)
         super().__init__(master, **kwargs)
         self._initialize_accessibility(accessible_text, status_callback, speak_callback)
@@ -326,6 +342,9 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
         self.bind("<KeyRelease-Right>", self._speak_current_char)
         self.bind("<Control-BackSpace>", self._delete_word_backwards)
         self.bind("<Control-Delete>", self._delete_word_forwards)
+        
+        # --- KORREKTUR: grammar_tool wird von außen übergeben ---
+        self.grammar_tool = grammar_tool
 
         if focus_color:
             self._focus_color = focus_color
@@ -333,6 +352,11 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
             self._original_border_color = self.cget("border_color")
             self.bind("<FocusIn>", self._on_get_focus_border, add="+")
             self.bind("<FocusOut>", self._on_lose_focus_border, add="+")
+            
+        if SpellChecker or self.grammar_tool:
+            self._initialize_spell_checker()
+            self.bind("<Button-3>", self._show_correction_menu)
+            self.bind("<Menu>", self._show_correction_menu)
 
     def _on_textbox_focus_in(self, event: Any = None):
         self._speak_and_update_status(event)
@@ -372,14 +396,11 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
             if not text_after.strip():
                 return "break"
 
-            # Finde den Offset bis zum Ende des zu löschenden Teils
-            offset = len(text_after) # Standard: alles bis zum Ende
+            offset = len(text_after) 
 
-            # Finde das erste Nicht-Leerzeichen (Beginn des Worts)
             match = re.search(r'\S', text_after)
             if match:
                 start_offset = match.start()
-                # Finde das nächste Leerzeichen nach Beginn des Worts
                 end_match = re.search(r'\s', text_after[start_offset:])
                 if end_match:
                     offset = start_offset + end_match.start()
@@ -436,3 +457,106 @@ class AccessibleCTkTextbox(ctk.CTkTextbox, AccessibleBase):
 
     def _on_lose_focus_border(self, event: Any = None):
         self.configure(border_width=self._original_border_width, border_color=self._original_border_color)
+
+    def _initialize_spell_checker(self):
+        """Initialisiert die Rechtschreib- und Grammatikprüfung."""
+        self.spell_checker = SpellChecker(language='de') if SpellChecker else None
+        # self.grammar_tool wird jetzt von außen gesetzt
+        
+        self.tag_config("misspelled", background=config.SPELLCHECK_ERROR_COLOR, underline=True)
+        self.tag_config("grammar_error", background=config.GRAMMAR_ERROR_COLOR, underline=True)
+        
+        self._spell_check_job = None
+        self.bind("<KeyRelease>", self._schedule_spell_check)
+
+    def _schedule_spell_check(self, event=None):
+        """Plant eine Rechtschreib- und Grammatikprüfung nach einer kurzen Verzögerung."""
+        if self._spell_check_job:
+            self.after_cancel(self._spell_check_job)
+        self._spell_check_job = self.after(800, self._perform_spell_check)
+
+    def _perform_spell_check(self):
+        """Führt die Rechtschreib- und Grammatikprüfung durch und hebt Fehler hervor."""
+        self.tag_remove("misspelled", "1.0", "end")
+        self.tag_remove("grammar_error", "1.0", "end")
+        
+        text = self.get("1.0", "end-1c")
+
+        if self.spell_checker:
+            words = re.findall(r'\b\w+\b', text.lower())
+            misspelled = self.spell_checker.unknown(words)
+            if misspelled:
+                for word in misspelled:
+                    start_index = "1.0"
+                    while True:
+                        pos = self.search(r'\m' + re.escape(word) + r'\M', start_index, stopindex="end", regexp=True, nocase=1)
+                        if not pos:
+                            break
+                        end_index = f"{pos}+{len(word)}c"
+                        self.tag_add("misspelled", pos, end_index)
+                        start_index = end_index
+
+        if self.grammar_tool:
+            matches = self.grammar_tool.check(text)
+            for match in matches:
+                if match.ruleId == 'GERMAN_SPELLER_RULE':
+                    continue
+                
+                start_pos = f"1.0 + {match.offset} chars"
+                end_pos = f"1.0 + {match.offset + match.errorLength} chars"
+                self.tag_add("grammar_error", start_pos, end_pos)
+
+    def _show_correction_menu(self, event: Any):
+        """Zeigt ein Kontextmenü mit Korrekturvorschlägen an."""
+        self.focus_set()
+
+        # Für die Tastatur (event.x, event.y sind 0) die aktuelle Cursor-Position verwenden
+        if event.keysym == 'Menu':
+            cursor_index = self.index(tk.INSERT)
+        else: # Für die Maus die Klick-Position verwenden
+            cursor_index = self.index(f"@{event.x},{event.y}")
+
+        tags = self.tag_names(cursor_index)
+        is_misspelled = "misspelled" in tags
+        is_grammar_error = "grammar_error" in tags
+
+        if not is_misspelled and not is_grammar_error:
+            return
+
+        tag_name = "misspelled" if is_misspelled else "grammar_error"
+        word_range = self.tag_prevrange(tag_name, cursor_index + "+1c")
+        if not word_range:
+            return
+            
+        start, end = word_range
+        error_text = self.get(start, end)
+        
+        suggestions = []
+        if self.grammar_tool and is_grammar_error:
+            text = self.get("1.0", "end-1c")
+            matches = self.grammar_tool.check(text)
+            for match in matches:
+                match_start_index = self.index(f"1.0 + {match.offset} chars")
+                if self.compare(match_start_index, "==", start):
+                    suggestions = match.replacements
+                    break
+        elif is_misspelled and self.spell_checker:
+            # --- KORREKTUR: Prüfen, ob candidates() None zurückgibt ---
+            candidates = self.spell_checker.candidates(error_text)
+            if candidates:
+                suggestions = list(candidates)
+
+        if not suggestions:
+            return
+
+        menu = tk.Menu(self, tearoff=0, font=config.FONT_NORMAL)
+        for suggestion in suggestions[:5]:
+            menu.add_command(label=suggestion, command=lambda s=suggestion: self._apply_correction(start, end, s))
+        
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _apply_correction(self, start: str, end: str, suggestion: str):
+        """Wendet die ausgewählte Korrektur an."""
+        self.delete(start, end)
+        self.insert(start, suggestion)
+        self._schedule_spell_check()

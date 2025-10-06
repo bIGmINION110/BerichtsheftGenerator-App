@@ -11,10 +11,9 @@ import customtkinter as ctk
 
 # --- Anwendungsinformationen ---
 APP_NAME: str = "Berichtsheft-Generator"
-VERSION: str = "18.0.0"
-GITHUB_LINK: str = "https://www.github.com/bigminion110/berichtsheftgenerator-app"
-# --- KORREKTUR 2: Korrekte URL zur GitHub API ---
-GITHUB_REPO_URL: str = "https://api.github.com/repos/bigminion110/berichtsheftgenerator-app/releases/latest"
+VERSION: str = "18.0.1"
+GITHUB_LINK: str = "https://www.github.com/bIgMINI0N/Berichtsheftgenerator-App"
+GITHUB_REPO_URL: str = "https://api.github.com/repos/bIgMINI0N/Berichtsheftgenerator-App/releases/latest"
 
 
 # --- Verzeichnisse und Dateipfade ---
@@ -27,27 +26,27 @@ else:
     # Im Entwicklungsmodus ist es das übergeordnete Verzeichnis von 'core'.
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-DATA_ORDNER: str = os.path.join(BASE_DIR, "data")
-AUSGABE_ORDNER: str = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else BASE_DIR, "Ausbildungsnachweise")
-ASSETS_ORDNER: str = os.path.join(BASE_DIR, "assets")
-LOG_ORDNER: str = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else BASE_DIR, "logs")
-FONTS_ORDNER: str = os.path.join(ASSETS_ORDNER, "fonts")
+DATA_FOLDER: str = os.path.join(BASE_DIR, "data")
+OUTPUT_FOLDER: str = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else BASE_DIR, "Ausbildungsnachweise")
+ASSETS_FOLDER: str = os.path.join(BASE_DIR, "assets")
+LOG_FOLDER: str = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else BASE_DIR, "logs")
+FONTS_FOLDER: str = os.path.join(ASSETS_FOLDER, "fonts")
 
 # --- Datenbank ---
-DATENBANK_DATEI: str = os.path.join(DATA_ORDNER, "berichtsheft.db")
+DATABASE_FILE: str = os.path.join(DATA_FOLDER, "berichtsheft.db")
 
 # Veraltete JSON-Pfade für die Migration
-KONFIG_DATEI_OLD: str = os.path.join(DATA_ORDNER, "berichtsheft_konfig.json")
-BERICHTS_DATEI_OLD: str = os.path.join(DATA_ORDNER, "berichts_daten.json")
-VORLAGEN_DATEI_OLD: str = os.path.join(DATA_ORDNER, "templates.json")
+KONFIG_DATEI_OLD: str = os.path.join(DATA_FOLDER, "berichtsheft_konfig.json")
+BERICHTS_DATEI_OLD: str = os.path.join(DATA_FOLDER, "berichts_daten.json")
+VORLAGEN_DATEI_OLD: str = os.path.join(DATA_FOLDER, "templates.json")
 
 
-LOGO_DATEI: str = os.path.join(ASSETS_ORDNER, "image.png")
-ICON_DATEI: str = os.path.join(ASSETS_ORDNER, "icon.ico")
+LOGO_FILE: str = os.path.join(ASSETS_FOLDER, "image.png")
+ICON_FILE: str = os.path.join(ASSETS_FOLDER, "icon.ico")
 
 
 # --- Kernlogik ---
-WOCHENTAGE: List[str] = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
+DAYS_IN_WEEK: List[str] = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 
 # --- GUI-Schriftarten und -Größen ---
 def get_ui_font() -> str:
@@ -70,21 +69,23 @@ FONT_SIDEBAR = None
 def initialize_fonts():
     """Initialisiert die globalen Schriftart-Objekte. Muss nach dem CTk-Hauptfenster aufgerufen werden."""
     global FONT_NORMAL, FONT_BOLD, FONT_TITLE, FONT_SIDEBAR
-    FONT_NORMAL = ctk.CTkFont(family=UI_FONT_FAMILY, size=24)
-    FONT_BOLD = ctk.CTkFont(family=UI_FONT_FAMILY, size=26, weight="bold")
-    FONT_TITLE = ctk.CTkFont(family=UI_FONT_FAMILY, size=40, weight="bold")
-    FONT_SIDEBAR = ctk.CTkFont(family=UI_FONT_FAMILY, size=24)
-    
+    FONT_NORMAL = ctk.CTkFont(family=UI_FONT_FAMILY, size=14)
+    FONT_BOLD = ctk.CTkFont(family=UI_FONT_FAMILY, size=16, weight="bold")
+    FONT_TITLE = ctk.CTkFont(family=UI_FONT_FAMILY, size=22, weight="bold")
+    FONT_SIDEBAR = ctk.CTkFont(family=UI_FONT_FAMILY, size=14)
+
 # --- GUI-Design ---
 # Ein modernes, blau-basiertes Farbschema
-ACCENT_COLOR: str = "#3B82F6"  # Modernes Blau
-HOVER_COLOR: str = "#60A5FA"   # Helleres Blau für Hover-Effekte
-FRAME_BG_COLOR: Tuple[str, str] = ("#F1F5F9", "#1E293B") # Helles und dunkles Schiefergrau
-SIDEBAR_BG_COLOR: Tuple[str, str] = ("#FFFFFF", "#111827") # Weiß und sehr dunkles Grau
+ACCENT_COLOR: str = "#007BFF"  # Helles Blau
+HOVER_COLOR: str = "#0056b3"   # Dunkleres Blau für Hover
+FRAME_BG_COLOR: Tuple[str, str] = ("#F8F9FA", "#121212") # Helles Grau und fast Schwarz
+SIDEBAR_BG_COLOR: Tuple[str, str] = ("#FFFFFF", "#1E1E1E") # Weiß und dunkles Grau
 SIDEBAR_BUTTON_INACTIVE_COLOR: str = "transparent"
-ERROR_COLOR: str = "#EF4444"       # Kräftiges Rot
-ERROR_HOVER_COLOR: str = "#DC2626"  # Dunkleres Rot
-FOCUS_COLOR: str = "#2563EB"       # Ein etwas dunkleres Blau für den Fokus
+ERROR_COLOR: str = "#DC3545"       # Rot
+ERROR_HOVER_COLOR: str = "#C82333"  # Dunkleres Rot
+FOCUS_COLOR: str = "#80BDFF"       # Helles Blau für Fokus
+SPELLCHECK_ERROR_COLOR: str = "#52021e"  # Dunkelrot für Rechtschreibfehler
+GRAMMAR_ERROR_COLOR: str = "#002f6c" # Dunkelblau für Grammatikfehler
 
 # --- Generator-Einstellungen ---
 # Diese Schriftarten werden mitgeliefert, daher sind sie plattformunabhängig

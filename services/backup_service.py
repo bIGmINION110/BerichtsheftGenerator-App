@@ -25,7 +25,7 @@ class BackupService:
     def export_all_data_to_zip(self, zip_path: str) -> Tuple[bool, str]:
         """Sammelt alle Datendateien UND erstellten Berichte und speichert sie in einem ZIP-Archiv."""
         try:
-            folders_to_backup = [config.DATA_ORDNER, config.AUSGABE_ORDNER]
+            folders_to_backup = [config.DATA_FOLDER, config.OUTPUT_FOLDER]
             
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 for folder in folders_to_backup:
@@ -53,8 +53,8 @@ class BackupService:
                 return False, "Die ausgewählte Datei ist kein gültiges ZIP-Archiv."
 
             # Temporäre Backup-Pfade
-            data_old = config.DATA_ORDNER + "_old"
-            ausgabe_old = config.AUSGABE_ORDNER + "_old"
+            data_old = config.DATA_FOLDER + "_old"
+            ausgabe_old = config.OUTPUT_FOLDER + "_old"
             
             # Alte Backup-Verzeichnisse entfernen, falls vorhanden
             if os.path.exists(data_old): shutil.rmtree(data_old)
@@ -66,10 +66,10 @@ class BackupService:
             # --- KORREKTUR ENDE ---
 
             # Aktuelle Daten sichern durch Verschieben
-            if os.path.exists(config.DATA_ORDNER):
-                shutil.move(config.DATA_ORDNER, data_old)
-            if os.path.exists(config.AUSGABE_ORDNER):
-                shutil.move(config.AUSGABE_ORDNER, ausgabe_old)
+            if os.path.exists(config.DATA_FOLDER):
+                shutil.move(config.DATA_FOLDER, data_old)
+            if os.path.exists(config.OUTPUT_FOLDER):
+                shutil.move(config.OUTPUT_FOLDER, ausgabe_old)
 
             try:
                 with zipfile.ZipFile(zip_path, 'r') as zipf:
@@ -91,11 +91,11 @@ class BackupService:
                 # Bei Fehlern den alten Zustand wiederherstellen
                 logger.error(f"Fehler beim Extrahieren des Backups: {e}. Stelle alten Zustand wieder her.", exc_info=True)
                 if os.path.exists(data_old):
-                    if os.path.exists(config.DATA_ORDNER): shutil.rmtree(config.DATA_ORDNER)
-                    shutil.move(data_old, config.DATA_ORDNER)
+                    if os.path.exists(config.DATA_FOLDER): shutil.rmtree(config.DATA_FOLDER)
+                    shutil.move(data_old, config.DATA_FOLDER)
                 if os.path.exists(ausgabe_old):
-                    if os.path.exists(config.AUSGABE_ORDNER): shutil.rmtree(config.AUSGABE_ORDNER)
-                    shutil.move(ausgabe_old, config.AUSGABE_ORDNER)
+                    if os.path.exists(config.OUTPUT_FOLDER): shutil.rmtree(config.OUTPUT_FOLDER)
+                    shutil.move(ausgabe_old, config.OUTPUT_FOLDER)
                 return False, f"Fehler beim Import: {e}. Der vorherige Zustand wurde wiederhergestellt."
 
             finally:

@@ -3,9 +3,11 @@
 """
 Definiert die Ansicht für den Import von bestehenden DOCX-Berichten.
 """
+from typing import Optional
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import logging
+import os
 from ..widgets.accessible_widgets import AccessibleCTkButton
 from core import config
 
@@ -30,7 +32,6 @@ class ImportView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        # Info-Frame
         info_frame = ctk.CTkFrame(self)
         info_frame.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
         info_frame.grid_columnconfigure(0, weight=1)
@@ -53,7 +54,6 @@ class ImportView(ctk.CTkFrame):
             speak_callback=self.app.speak
         ).pack(pady=15)
 
-        # Log/Output-Frame
         self.output_frame = ctk.CTkFrame(self)
         self.output_frame.grid(row=1, column=0, padx=15, pady=(0, 15), sticky="nsew")
         self.output_frame.grid_columnconfigure(0, weight=1)
@@ -62,12 +62,17 @@ class ImportView(ctk.CTkFrame):
         self.output_textbox = ctk.CTkTextbox(self.output_frame, state="disabled", wrap="word")
         self.output_textbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-    def _log_to_view(self, message: str):
+    def _log_to_view(self, message: str, color: Optional[str] = None):
         """Schreibt eine Nachricht in das Textfeld der Ansicht."""
         self.output_textbox.configure(state="normal")
-        self.output_textbox.insert("end", message + "\n")
+        if color:
+            tag_name = color.lower()
+            self.output_textbox.tag_config(tag_name, foreground=color)
+            self.output_textbox.insert("end", message + "\n", tag_name)
+        else:
+            self.output_textbox.insert("end", message + "\n")
         self.output_textbox.configure(state="disabled")
-        self.update_idletasks() # UI sofort aktualisieren
+        self.update_idletasks()
 
     def _select_and_import_files(self) -> None:
         """Öffnet einen Dateidialog und startet den Importprozess."""
@@ -84,25 +89,28 @@ class ImportView(ctk.CTkFrame):
 
         self._log_to_view(f"{len(file_paths)} Datei(en) ausgewählt. Starte Import...")
         
-        # KORREKTUR: Das Tupel mit 3 Werten korrekt entpacken
-        success_count, failure_count, save_success = self.controller.import_docx_berichte(file_paths)
+        erfolgreich, fehlerhaft, save_success, error_details = self.controller.import_docx_berichte(file_paths)
         
-        self._log_to_view("\n--- Import abgeschlossen ---")
-        self._log_to_view(f"Erfolgreich eingelesen: {success_count}")
-        self._log_to_view(f"Fehlgeschlagen/Übersprungen: {failure_count}")
+        self._log_to_view("\n--- Import-Details ---")
+        for file, error in error_details.items():
+            self._log_to_view(f"Datei: {os.path.basename(file)} - Fehler: {error}", color="orange")
 
-        if success_count > 0 and save_success:
-            self._log_to_view("Datenbank erfolgreich aktualisiert.")
+        self._log_to_view("\n--- Zusammenfassung ---")
+        self._log_to_view(f"Erfolgreich eingelesen: {erfolgreich}", color="lightgreen")
+        self._log_to_view(f"Fehlgeschlagen/Übersprungen: {fehlerhaft}", color="orange")
+
+        if erfolgreich > 0 and save_success:
+            self._log_to_view("Datenbank erfolgreich aktualisiert.", color="lightgreen")
             messagebox.showinfo("Import abgeschlossen", 
-                                f"{success_count} Bericht(e) wurden erfolgreich importiert und gespeichert.\n"
+                                f"{erfolgreich} Bericht(e) wurden erfolgreich importiert und gespeichert.\n"
                                 "Die Daten sind jetzt in der Statistik und unter 'Bericht laden' verfügbar.")
             self.app.reload_all_data()
-        elif success_count > 0 and not save_success:
-            self._log_to_view("FEHLER: Die eingelesenen Daten konnten nicht in der Datenbank gespeichert werden.")
+        elif erfolgreich > 0 and not save_success:
+            self._log_to_view("FEHLER: Die eingelesenen Daten konnten nicht in der Datenbank gespeichert werden.", color="red")
             messagebox.showerror("Fehler beim Speichern",
                                  "Die Berichte wurden zwar eingelesen, konnten aber nicht in der Datenbank gespeichert werden. "
                                  "Bitte prüfen Sie die Log-Dateien.")
-        elif failure_count > 0 and success_count == 0:
+        elif fehlerhaft > 0 and erfolgreich == 0:
             messagebox.showwarning("Import abgeschlossen",
                                    "Es konnten keine Berichte importiert werden. "
-                                   "Stellen Sie sicher, dass die Dateien dem erwarteten Format entsprechen.")
+                                   "Details finden Sie im Info-Fenster der Import-Ansicht.")

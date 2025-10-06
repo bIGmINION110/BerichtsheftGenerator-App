@@ -29,6 +29,7 @@ class SettingsView(ctk.CTkFrame):
         self.default_stunden_vars: Dict[str, tk.StringVar] = {}
         self.default_typen_vars: Dict[str, tk.StringVar] = {}
         self.default_format_var = tk.StringVar(value="docx")
+        self.animation_type_var = tk.StringVar(value="slide") # NEU
 
         self._create_widgets()
         self.on_show() # Lade die Daten beim Initialisieren
@@ -50,30 +51,41 @@ class SettingsView(ctk.CTkFrame):
         settings_container.grid_columnconfigure(0, weight=1)
         
         # --- Persönliche Daten ---
-        persoenliche_daten_frame = ctk.CTkFrame(settings_container)
+        persoenliche_daten_frame = ctk.CTkFrame(settings_container, corner_radius=8)
         persoenliche_daten_frame.pack(fill="x", padx=0, pady=5)
         persoenliche_daten_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(persoenliche_daten_frame, text="Persönliche Daten", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
         
         ctk.CTkLabel(persoenliche_daten_frame, text="Name des Azubis:", font=self.main_font).grid(row=1, column=0, padx=(15, 5), pady=8, sticky="w")
         name_entry = AccessibleCTkEntry(
-            persoenliche_daten_frame, textvariable=self.name_var, font=self.main_font, focus_color=config.FOCUS_COLOR,
+            persoenliche_daten_frame, textvariable=self.name_var, font=self.main_font, corner_radius=8, focus_color=config.FOCUS_COLOR,
             accessible_text="Name des Auszubildenden. Wird für alle Berichte verwendet.",
             status_callback=self.app.update_status, speak_callback=self.app.speak)
         name_entry.grid(row=1, column=1, padx=(0, 15), pady=8, sticky="ew")
-        name_entry.configure(state="normal") # KORREKTUR: Feld bearbeitbar machen
+        name_entry.configure(state="normal")
 
         ctk.CTkLabel(persoenliche_daten_frame, text="Start der Ausbildung:", font=self.main_font).grid(row=2, column=0, padx=(15, 5), pady=8, sticky="w")
         start_entry = AccessibleCTkEntry(
-            persoenliche_daten_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=self.main_font, focus_color=config.FOCUS_COLOR,
+            persoenliche_daten_frame, textvariable=self.startdatum_var, placeholder_text="TT.MM.JJJJ", font=self.main_font, corner_radius=8, focus_color=config.FOCUS_COLOR,
             accessible_text="Startdatum der Ausbildung im Format Tag.Monat.Jahr.",
             status_callback=self.app.update_status, speak_callback=self.app.speak)
         start_entry.grid(row=2, column=1, padx=(0, 15), pady=8, sticky="ew")
-        start_entry.configure(state="normal") # KORREKTUR: Feld bearbeitbar machen
+        start_entry.configure(state="normal")
+
+        # --- GUI-Einstellungen (Animationen) --- NEU
+        gui_frame = ctk.CTkFrame(settings_container, corner_radius=8)
+        gui_frame.pack(fill="x", padx=0, pady=5, expand=True)
+        gui_frame.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(gui_frame, text="Darstellung", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
+        
+        ctk.CTkLabel(gui_frame, text="Animationstyp:", font=self.main_font).grid(row=1, column=0, padx=(15, 5), pady=8, sticky="w")
+        animation_menu = ctk.CTkOptionMenu(
+            gui_frame, variable=self.animation_type_var, values=["slide", "fade", "zoom"], font=self.main_font, corner_radius=8)
+        animation_menu.grid(row=1, column=1, padx=(0, 15), pady=8, sticky="w")
 
 
         # --- Standard-Typen und Stunden in einem Frame ---
-        defaults_frame = ctk.CTkFrame(settings_container)
+        defaults_frame = ctk.CTkFrame(settings_container, corner_radius=8)
         defaults_frame.pack(fill="x", padx=0, pady=5, expand=True)
         defaults_frame.grid_columnconfigure((0, 1), weight=1)
 
@@ -82,11 +94,11 @@ class SettingsView(ctk.CTkFrame):
         typen_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(typen_frame, text="Standard-Typen", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
 
-        for i, tag in enumerate(config.WOCHENTAGE):
+        for i, tag in enumerate(config.DAYS_IN_WEEK):
             self.default_typen_vars[tag] = tk.StringVar()
             ctk.CTkLabel(typen_frame, text=f"{tag}:", font=self.main_font).grid(row=i + 1, column=0, padx=(15, 5), pady=8, sticky="w")
             combo = AccessibleCTkComboBox(
-                typen_frame, variable=self.default_typen_vars[tag], values=["Betrieb", "Schule"], width=120, font=self.main_font,
+                typen_frame, variable=self.default_typen_vars[tag], values=["Betrieb", "Schule"], width=120, font=self.main_font, corner_radius=8,
                 focus_color=config.FOCUS_COLOR, accessible_text=f"Standard-Typ für {tag}.",
                 status_callback=self.app.update_status, speak_callback=self.app.speak)
             combo.grid(row=i + 1, column=1, padx=(0, 15), pady=8, sticky="w")
@@ -96,17 +108,17 @@ class SettingsView(ctk.CTkFrame):
         stunden_frame.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(stunden_frame, text="Standard-Arbeitszeiten", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
 
-        for i, tag in enumerate(config.WOCHENTAGE):
+        for i, tag in enumerate(config.DAYS_IN_WEEK):
             self.default_stunden_vars[tag] = tk.StringVar()
             ctk.CTkLabel(stunden_frame, text=f"{tag}:", font=self.main_font).grid(row=i+1, column=0, padx=(15, 5), pady=8, sticky="w")
             entry = AccessibleCTkEntry(
-                stunden_frame, textvariable=self.default_stunden_vars[tag], width=100, font=self.main_font, focus_color=config.FOCUS_COLOR,
+                stunden_frame, textvariable=self.default_stunden_vars[tag], width=100, font=self.main_font, corner_radius=8, focus_color=config.FOCUS_COLOR,
                 accessible_text=f"Standard-Stunden für {tag} im Format HH:MM.",
                 status_callback=self.app.update_status, speak_callback=self.app.speak, navigation_mode='time')
             entry.grid(row=i+1, column=1, padx=(0, 15), pady=8, sticky="w")
 
         # --- Standard-Exportformat ---
-        format_frame = ctk.CTkFrame(settings_container)
+        format_frame = ctk.CTkFrame(settings_container, corner_radius=8)
         format_frame.pack(fill="x", padx=0, pady=5)
         format_frame.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(format_frame, text="Standard-Exportformat", font=self.bold_font).grid(row=0, column=0, columnspan=2, padx=15, pady=(15, 5), sticky="w")
@@ -128,7 +140,7 @@ class SettingsView(ctk.CTkFrame):
         AccessibleCTkButton(
             button_frame, text="Einstellungen speichern",
             command=self._save_settings, font=self.bold_font, fg_color=config.ACCENT_COLOR,
-            hover_color=config.HOVER_COLOR, accessible_text="Speichert alle vorgenommenen Einstellungen.",
+            hover_color=config.HOVER_COLOR, corner_radius=8, accessible_text="Speichert alle vorgenommenen Einstellungen.",
             status_callback=self.app.update_status, speak_callback=self.app.speak
         ).pack(anchor="e")
 
@@ -140,6 +152,9 @@ class SettingsView(ctk.CTkFrame):
 
         einstellungen = konfig.get("einstellungen", {})
         
+        self.animation_type_var.set(einstellungen.get("animation_type", "slide"))
+        self.default_format_var.set(einstellungen.get("default_format", "docx"))
+        
         default_typen = einstellungen.get("default_typen", {})
         for tag, var in self.default_typen_vars.items():
             var.set(default_typen.get(tag, "Betrieb"))
@@ -148,21 +163,19 @@ class SettingsView(ctk.CTkFrame):
         for tag, var in self.default_stunden_vars.items():
             var.set(default_stunden.get(tag, "08:00"))
         
-        self.default_format_var.set(einstellungen.get("default_format", "docx"))
         self.app.update_status("Einstellungen geladen.")
 
     def _save_settings(self):
         """Sammelt die Daten aus der UI und speichert sie in der Konfigurationsdatei."""
-        # Persönliche Daten direkt in der Haupt-App speichern lassen
         self.app.speichere_persoenliche_daten(
             self.name_var.get(),
             self.startdatum_var.get()
         )
         
-        # Andere Einstellungen speichern
         neue_einstellungen = {
             "default_stunden": {tag: var.get() for tag, var in self.default_stunden_vars.items()},
             "default_typen": {tag: var.get() for tag, var in self.default_typen_vars.items()},
-            "default_format": self.default_format_var.get()
+            "default_format": self.default_format_var.get(),
+            "animation_type": self.animation_type_var.get()
         }
         self.app.speichere_einstellungen(neue_einstellungen)
