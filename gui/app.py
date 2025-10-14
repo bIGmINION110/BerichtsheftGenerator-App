@@ -110,23 +110,42 @@ class BerichtsheftApp(ctk.CTk):
 
     def _initialize_speaker(self) -> Optional[Any]:
         """
-        Prüft plattformunabhängig, ob ein Screenreader aktiv ist.
+        Initialisiert die Sprachausgabe durch gezieltes Testen auf gängige Screenreader
+        wie NVDA, JAWS, VoiceOver oder eSpeak.
         """
         if not ACCESSIBLE_OUTPUT_AVAILABLE:
             logging.info("Bibliothek 'accessible_output2' nicht verfügbar. Sprachausgabe deaktiviert.")
             return None
-        
+
+        # Reihenfolge der zu prüfenden Screenreader-Klassen.
+        # Die Reihenfolge kann die Priorität bestimmen, falls mehrere aktiv sein könnten.
+        screen_readers_to_check = [
+            outputs.nvda.NVDA,
+            outputs.jaws.Jaws,
+            # outputs.voiceover.VoiceOver,
+            # outputs.espeak.ESpeak,
+            outputs.sapi5.SAPI5  # Als Fallback für Windows
+        ]
+
         try:
-            speaker = outputs.auto.Auto()
-            if speaker and hasattr(speaker, 'is_active') and speaker.is_active():
-                logging.info(f"Aktiver Screenreader '{speaker.name}' erkannt. Sprachausgabe wird aktiviert.")
-                return speaker
-            else:
-                logging.info("Kein aktiver Screenreader gefunden. Sprachausgabe bleibt deaktiviert.")
-                return None
-        except Exception as e:
-            logging.warning(f"Fehler bei der Initialisierung des Screenreaders: {e}")
+            for reader_class in screen_readers_to_check:
+                try:
+                    # Instanziiere den Speaker und prüfe, ob er aktiv ist.
+                    speaker = reader_class()
+                    if speaker.is_active():
+                        logging.info(f"Aktiver Screenreader '{speaker.name}' erkannt. Sprachausgabe wird aktiviert.")
+                        return speaker
+                except Exception:
+                    # Fehler bei der Initialisierung einer einzelnen Klasse ignorieren
+                    # und mit der nächsten weitermachen.
+                    continue
+            
+            logging.info("Kein aktiver Screenreader (JAWS, NVDA, VoiceOver, etc.) gefunden. Sprachausgabe bleibt deaktiviert.")
             return None
+        except Exception as e:
+            logging.warning(f"Allgemeiner Fehler bei der Initialisierung der Sprachausgabe: {e}")
+            return None
+
 
     def _welcome_message(self):
         """Gibt eine Willkommensnachricht aus, falls ein Screenreader aktiv ist."""
