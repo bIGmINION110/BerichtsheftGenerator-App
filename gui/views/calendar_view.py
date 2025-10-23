@@ -69,7 +69,7 @@ class CalendarView(ctk.CTkFrame):
         self.calendar = Calendar(
             self.calendar_frame,
             selectmode='day',
-            date_pattern='dd.mm.y',
+            date_pattern='dd.mm.yyyy', # <--- ÄNDERUNG HIER (kleines yyyy)
             showweeknumbers=True
         )
         self.calendar.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -114,7 +114,7 @@ class CalendarView(ctk.CTkFrame):
             
         try:
             selected_date_str = self.calendar.get_date()
-            selected_date = datetime.strptime(selected_date_str, self.calendar['date_pattern']).date()
+            selected_date = datetime.strptime(selected_date_str, '%d.%m.%Y').date()
             year, week, _ = selected_date.isocalendar()
             
             report_key = f"{year}-{week}"

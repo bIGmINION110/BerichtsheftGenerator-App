@@ -124,7 +124,7 @@ class BerichtsheftApp(ctk.CTk):
             outputs.jaws.Jaws,
             # outputs.voiceover.VoiceOver,
             # outputs.espeak.ESpeak,
-            outputs.sapi5.SAPI5  # Als Fallback für Windows
+            # outputs.sapi5.SAPI5  # Als Fallback für Windows
         ]
 
         try:

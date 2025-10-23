@@ -1,50 +1,26 @@
 # ==========================================================
-# Bibliotheken für alle Betriebssysteme
+# Hauptbibliotheken für die Anwendung
 # ==========================================================
-accessible-output2==0.17
-altgraph==0.17.4
-pyspellchecker==0.8.1
-language-tool-python
-babel==2.17.0
-contourpy==1.3.3
 customtkinter==5.2.2
-cycler==0.12.1
-darkdetect==0.8.0
-defusedxml==0.7.1
-fonttools==4.59.2
-fpdf2==2.8.4
-kiwisolver==1.4.9
-libloader==1.3.3
-lxml==6.0.1
-matplotlib==3.10.6
-numpy==2.3.2
-packaging==25.0
-pillow==11.3.0
-platform_utils==1.5.10
-platformdirs==4.4.0
-pyinstaller==6.15.0
-pyinstaller-hooks-contrib==2025.8
-pyparsing==3.2.3
-python-dateutil==2.9.0.post0
+Pillow==11.3.0
 python-docx==1.2.0
-setuptools==80.9.0
-six==1.17.0
-tkcalendar==1.6.1
-typing_extensions==4.15.0
-pytest==8.2.2 # Hinzugefügt für Tests
+fpdf2==2.8.4
 
 # ==========================================================
-# Betriebssystem-spezifische Bibliotheken
+# Optionale Bibliotheken für zusätzliche Funktionen
+# (Die App funktioniert auch ohne diese, aber mit eingeschränktem Funktionsumfang)
 # ==========================================================
+accessible-output2==0.17      # Für Screenreader-Unterstützung
+pyspellchecker==0.8.1         # Für die Rechtschreibprüfung
+language-tool-python          # Für die Grammatikprüfung
+matplotlib==3.10.6            # Für die Diagramme in der Statistik-Ansicht
+tkcalendar==1.6.1             # Für die Kalender-Widgets
 
-# Für tiefe Windows-Integration (keine Alternative auf anderen Systemen)
-pywin32==311 ; sys_platform == 'win32'
-pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
-
-# Zum Analysieren von ausführbaren Dateien (je nach OS)
-pefile==2023.2.7 ; sys_platform == 'win32'      # für .exe/.dll unter Windows
-pyelftools ; sys_platform == 'linux'           # für ELF-Dateien unter Linux
-macholib ; sys_platform == 'darwin'            # für Mach-O-Dateien unter macOS
+# ==========================================================
+# Bibliotheken für die Entwicklung (optional)
+# ==========================================================
+pytest==8.2.2                 # Zum Ausführen der Tests
+pyinstaller==6.15.0           # Zum Erstellen der .exe-Datei
 
 # To install the dependencies:
 # pip install -r requirements.txt

@@ -9,6 +9,7 @@ from tkinter import Menu
 from typing import Dict, Any, List
 from ..widgets.accessible_widgets import AccessibleCTkButton
 from core import config
+from tkinter import messagebox
 
 logger = logging.getLogger(__name__)
 
